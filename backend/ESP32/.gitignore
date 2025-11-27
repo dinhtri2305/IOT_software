@@ -1,5 +1,9 @@
 # PlatformIO + ESP32
 .pio/
+.piopm/
+.pioenvs/
+.piolibdeps/
+*.piopm
 build/
 *.bin
 *.elf
