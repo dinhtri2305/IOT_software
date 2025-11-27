@@ -1,33 +1,88 @@
+// app/routes/sensor.routes.js
 const express = require("express");
 const router = express.Router();
-const sensorController = require("../controllers/sensor.controller");
-const { protect } = require("../middleware/auth.middleware");
 
-// All sensor routes require authentication
+const sensorController = require("../controllers/sensor.controller");
+const { protect, authorize } = require("../middleware/auth.middleware");
+const {
+  queryValidator,
+  validate,
+} = require("../middleware/validator.middleware");
+
+// ==================== PUBLIC ROUTE: ESP32 gửi dữ liệu (không cần JWT)
+router.post(
+  "/data",
+  // Rate limit 10 lần/giây/device để chống spam (implement later)
+  queryValidator([{ name: "deviceId", required: true }]),
+  sensorController.receiveFromESP32
+);
+
+// From here, routes require authentication
 router.use(protect);
 
-// GET /api/sensor/latest - Get latest sensor readings
+// ==================== ROUTES CHỈ ADMIN/USER ĐƯỢC DÙNG ====================
+
+// Lấy dữ liệu mới nhất (realtime dashboard)
 router.get("/latest", sensorController.getLatest);
 
-// GET /api/sensor/current - Get current sensor reading (single)
+// Lấy 1 bản ghi hiện tại duy nhất
 router.get("/current", sensorController.getCurrent);
 
-// GET /api/sensor/history - Get sensor history with pagination
-router.get("/history", sensorController.getHistory);
+// Lịch sử dữ liệu + phân trang + lọc theo thời gian/device
+router.get(
+  "/history",
+  queryValidator([
+    { name: "page", type: "number", default: 1 },
+    { name: "limit", type: "number", default: 50, max: 1000 },
+    { name: "startDate", type: "date" },
+    { name: "endDate", type: "date" },
+    { name: "deviceId" },
+  ]),
+  validate,
+  sensorController.getHistory
+);
 
-// GET /api/sensor/fire-alerts - Get fire alert history
+// Lịch sử báo cháy
 router.get("/fire-alerts", sensorController.getFireAlerts);
 
-// GET /api/sensor/statistics - Get statistics
-router.get("/statistics", sensorController.getStatistics);
+// Thống kê 24h / 7 ngày / 30 ngày
+router.get(
+  "/statistics",
+  queryValidator([
+    { name: "hours", type: "number", default: 24 },
+    { name: "deviceId" },
+  ]),
+  validate,
+  sensorController.getStatistics
+);
 
-// GET /api/sensor/chart-data - Get data for charts
-router.get("/chart-data", sensorController.getChartData);
+// Dữ liệu cho biểu đồ (Chart.js, Recharts...)
+router.get(
+  "/chart-data",
+  queryValidator([
+    {
+      name: "type",
+      required: true,
+      values: ["temperature", "humidity", "gas", "flame"],
+    },
+    { name: "range", values: ["1h", "6h", "24h", "7d"], default: "24h" },
+    { name: "deviceId" },
+  ]),
+  validate,
+  sensorController.getChartData
+);
 
-// POST /api/sensor/manual - Manually add sensor data (for testing)
-router.post("/manual", sensorController.createManual);
+// Tạo dữ liệu giả để test (chỉ admin)
+router.post("/manual", authorize("admin"), sensorController.createManual);
 
-// DELETE /api/sensor/old - Delete old data (cleanup)
-router.delete("/old", sensorController.deleteOld);
+// Xóa dữ liệu cũ (chỉ admin)
+router.delete(
+  "/cleanup",
+  authorize("admin"),
+  queryValidator([{ name: "days", type: "number", required: true, min: 1 }]),
+  validate,
+  sensorController.deleteOldData
+);
 
+// Export
 module.exports = router;
