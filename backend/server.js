@@ -4,7 +4,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const compression = require("compression");
-const bodyParser = require("body-parser");
 
 // Import database connection
 const connectDB = require("./app/config/db.config");
@@ -26,10 +25,10 @@ const PORT = process.env.PORT || 3000;
 // MIDDLEWARE
 // ========================================
 
-// Security headers
+// Security
 app.use(helmet());
 
-// Enable CORS
+// CORS
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "*",
@@ -44,17 +43,17 @@ app.use(morgan("dev"));
 // Compression
 app.use(compression());
 
-// Body parser
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// Body parser (Express built-in)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ========================================
-// DATABASE CONNECTION
+// CONNECT DATABASE
 // ========================================
 connectDB();
 
 // ========================================
-// MQTT CONNECTION
+// CONNECT MQTT BROKER
 // ========================================
 mqttHandler.connect();
 
@@ -62,7 +61,7 @@ mqttHandler.connect();
 // ROUTES
 // ========================================
 
-// Health check
+// Root check
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -71,12 +70,14 @@ app.get("/", (req, res) => {
     endpoints: {
       sensor: "/api/sensor",
       device: "/api/device",
+      auth: "/api/auth",
+      analytics: "/api/analytics",
       health: "/api/health",
     },
   });
 });
 
-// Health check endpoint
+// Health check
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -87,15 +88,17 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// API Routes
+// Register routes
+app.use("/api/auth", authRoutes);
 app.use("/api/sensor", sensorRoutes);
 app.use("/api/device", deviceRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // ========================================
 // ERROR HANDLING
 // ========================================
 
-// 404 handler
+// 404
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -106,7 +109,7 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err.stack);
+  console.error("Error:", err);
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error",
@@ -122,8 +125,7 @@ app.listen(PORT, () => {
   console.log("🔥 Fire Detection Backend Server");
   console.log("========================================");
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 API URL: http://localhost:${PORT}`);
+  console.log(`🌐 http://localhost:${PORT}`);
   console.log(`📊 MQTT Broker: ${process.env.MQTT_BROKER}`);
   console.log("========================================");
 });
