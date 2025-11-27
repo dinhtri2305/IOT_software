@@ -105,7 +105,6 @@ class MQTTHandler {
         temperature: data.temperature ?? null,
         humidity: data.humidity ?? null,
         gasLevel: data.gasLevel ?? null,
-        flameValue: data.flameValue ?? null,
         fireDetected: Boolean(data.fireDetected),
         location: data.location || "Unknown",
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),

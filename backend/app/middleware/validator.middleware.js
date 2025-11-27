@@ -19,13 +19,15 @@ exports.queryValidator = (rules = []) => {
           // ignore
         }
       }
-      if (
-        required &&
-        (req.query[name] === undefined || req.query[name] === "")
-      ) {
+      // Use the resolved `value` (which may come from req.query or req.body)
+      if (required && (value === undefined || value === "")) {
         return res
           .status(400)
           .json({ success: false, message: `${name} is required` });
+      }
+      // If value came from body but downstream code expects req.query, copy it there
+      if (value !== undefined && req.query[name] === undefined) {
+        req.query[name] = value;
       }
     }
     next();

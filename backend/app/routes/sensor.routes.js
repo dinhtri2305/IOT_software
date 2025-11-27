@@ -63,7 +63,7 @@ router.get(
     {
       name: "type",
       required: true,
-      values: ["temperature", "humidity", "gas", "flame"],
+      values: ["temperature", "humidity", "gas"],
     },
     { name: "range", values: ["1h", "6h", "24h", "7d"], default: "24h" },
     { name: "deviceId" },
