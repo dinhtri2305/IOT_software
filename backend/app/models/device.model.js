@@ -1,17 +1,12 @@
 const mongoose = require("mongoose");
 
-// helper to generate default deviceId if none provided
-function generateDeviceId() {
-  return `ESP32_${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
-}
-
 const deviceSchema = new mongoose.Schema(
   {
     deviceId: {
       type: String,
       required: true,
       unique: true,
-      default: generateDeviceId,
+      default: "ESP32_001",
     },
     deviceName: {
       type: String,
@@ -105,32 +100,25 @@ const deviceSchema = new mongoose.Schema(
   }
 );
 
-// Ensure virtuals are included when converting to JSON
-deviceSchema.set("toJSON", { virtuals: true });
-deviceSchema.set("toObject", { virtuals: true });
-
 // Index for faster queries
-deviceSchema.index({ deviceId: 1 }, { unique: true });
+deviceSchema.index({ deviceId: 1 });
 deviceSchema.index({ isOnline: 1 });
 
 // Virtual property for overall device health
 deviceSchema.virtual("health").get(function () {
   if (!this.isOnline) return "offline";
 
-  if (!this.lastSeen) return "unknown";
-
-  const timeSinceLastSeen = Date.now() - new Date(this.lastSeen).getTime();
+  const timeSinceLastSeen = Date.now() - this.lastSeen.getTime();
   const fiveMinutes = 5 * 60 * 1000;
 
   if (timeSinceLastSeen > fiveMinutes) return "warning";
-  if (this.signalStrength !== undefined && this.signalStrength < -80)
-    return "poor";
+  if (this.signalStrength < -80) return "poor";
 
   return "good";
 });
 
 // Instance method to update device status
-deviceSchema.methods.updateStatus = async function (updates = {}) {
+deviceSchema.methods.updateStatus = async function (updates) {
   if (updates.relay !== undefined) {
     this.relay.status = updates.relay;
     this.relay.lastChanged = new Date();
@@ -150,11 +138,6 @@ deviceSchema.methods.updateStatus = async function (updates = {}) {
     this.isOnline = updates.isOnline;
   }
 
-  if (updates.ipAddress !== undefined) this.ipAddress = updates.ipAddress;
-  if (updates.signalStrength !== undefined)
-    this.signalStrength = updates.signalStrength;
-  if (updates.uptime !== undefined) this.uptime = updates.uptime;
-
   this.lastSeen = new Date();
 
   return await this.save();
@@ -162,8 +145,7 @@ deviceSchema.methods.updateStatus = async function (updates = {}) {
 
 // Instance method to check if device needs attention
 deviceSchema.methods.needsAttention = function () {
-  if (!this.lastSeen) return true;
-  const timeSinceLastSeen = Date.now() - new Date(this.lastSeen).getTime();
+  const timeSinceLastSeen = Date.now() - this.lastSeen.getTime();
   const tenMinutes = 10 * 60 * 1000;
 
   return !this.isOnline || timeSinceLastSeen > tenMinutes;
@@ -201,9 +183,9 @@ deviceSchema.statics.heartbeat = async function (deviceId, systemInfo = {}) {
   device.lastSeen = new Date();
 
   if (systemInfo.ipAddress) device.ipAddress = systemInfo.ipAddress;
-  if (systemInfo.signalStrength !== undefined)
+  if (systemInfo.signalStrength)
     device.signalStrength = systemInfo.signalStrength;
-  if (systemInfo.uptime !== undefined) device.uptime = systemInfo.uptime;
+  if (systemInfo.uptime) device.uptime = systemInfo.uptime;
   if (systemInfo.firmwareVersion)
     device.firmwareVersion = systemInfo.firmwareVersion;
 
@@ -232,9 +214,9 @@ deviceSchema.statics.getAllStatus = async function () {
     location: device.location,
     isOnline: device.isOnline,
     lastSeen: device.lastSeen,
-    relay: device.relay?.status,
-    buzzer: device.buzzer?.status,
-    led: device.led?.status,
+    relay: device.relay.status,
+    buzzer: device.buzzer.status,
+    led: device.led.status,
     health: device.health,
     signalStrength: device.signalStrength,
     firmwareVersion: device.firmwareVersion,
