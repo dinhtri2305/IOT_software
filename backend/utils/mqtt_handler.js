@@ -1,3 +1,4 @@
+// utils/mqtt_handler.js
 const mqtt = require("mqtt");
 const SensorData = require("../app/models/sensor.model");
 const Device = require("../app/models/device.model");
@@ -9,150 +10,172 @@ class MQTTHandler {
   }
 
   connect() {
+    const brokerUrl = `mqtt://${
+      process.env.MQTT_BROKER || "broker.hivemq.com"
+    }:${process.env.MQTT_PORT || 1883}`;
     const options = {
-      host: process.env.MQTT_BROKER || "broker.hivemq.com",
-      port: process.env.MQTT_PORT || 1883,
-      protocol: "mqtt",
-      username: process.env.MQTT_USERNAME || "",
-      password: process.env.MQTT_PASSWORD || "",
-      clientId: `fire_detection_backend_${Math.random().toString(16).slice(3)}`,
+      clientId: `backend_${Date.now()}_${Math.random()
+        .toString(16)
+        .slice(2, 8)}`,
       clean: true,
-      reconnectPeriod: 5000,
-      connectTimeout: 30 * 1000,
+      reconnectPeriod: 3000,
+      connectTimeout: 10 * 1000,
+      keepalive: 60,
+      resubscribe: true,
+      username: process.env.MQTT_USERNAME || undefined,
+      password: process.env.MQTT_PASSWORD || undefined,
     };
 
-    console.log("🔄 Connecting to MQTT Broker...");
-    console.log(`📡 Broker: ${options.host}:${options.port}`);
+    console.log("Connecting MQTT Broker:", brokerUrl);
+    this.client = mqtt.connect(brokerUrl, options);
 
-    this.client = mqtt.connect(options);
-
-    // Connection successful
     this.client.on("connect", () => {
-      console.log("✅ MQTT Connected successfully!");
       this.connected = true;
+      console.log("MQTT Connected!");
 
-      // Subscribe to sensor data topic
-      this.client.subscribe(process.env.MQTT_TOPIC_SENSOR, (err) => {
+      const topics = [
+        process.env.MQTT_TOPIC_SENSOR,
+        process.env.MQTT_TOPIC_STATUS,
+        process.env.MQTT_TOPIC_CONTROL, // để nhận lệnh từ frontend
+      ].filter(Boolean);
+
+      this.client.subscribe(topics, { qos: 1 }, (err) => {
         if (!err) {
-          console.log(`📥 Subscribed to: ${process.env.MQTT_TOPIC_SENSOR}`);
+          console.log("Subscribed to:", topics.join(", "));
         } else {
-          console.error("❌ Subscription error:", err);
-        }
-      });
-
-      // Subscribe to device status topic
-      this.client.subscribe(process.env.MQTT_TOPIC_STATUS, (err) => {
-        if (!err) {
-          console.log(`📥 Subscribed to: ${process.env.MQTT_TOPIC_STATUS}`);
+          console.error("Subscribe error:", err.message);
         }
       });
     });
 
-    // Message received
     this.client.on("message", async (topic, message) => {
+      let payload;
       try {
-        const data = JSON.parse(message.toString());
-        console.log(`📨 Received from ${topic}:`, data);
+        payload = JSON.parse(message.toString());
+      } catch (err) {
+        console.warn("Invalid JSON received on", topic, message.toString());
+        return;
+      }
 
-        // Handle sensor data
+      console.log(`Message from ${topic}:`, payload);
+
+      try {
         if (topic === process.env.MQTT_TOPIC_SENSOR) {
-          await this.handleSensorData(data);
+          await this.handleSensorData(payload);
+        } else if (topic === process.env.MQTT_TOPIC_STATUS) {
+          await this.handleDeviceStatus(payload);
+        } else if (topic === process.env.MQTT_TOPIC_CONTROL) {
+          // Nhận lệnh từ frontend → forward lại cho ESP32
+          this.publishControl(payload);
         }
-
-        // Handle device status
-        if (topic === process.env.MQTT_TOPIC_STATUS) {
-          await this.handleDeviceStatus(data);
-        }
-      } catch (error) {
-        console.error("❌ Error processing message:", error);
+      } catch (err) {
+        console.error("Handler error:", err);
       }
     });
 
-    // Connection error
-    this.client.on("error", (error) => {
-      console.error("❌ MQTT Connection Error:", error.message);
+    this.client.on("error", (err) => {
+      console.error("MQTT Error:", err.message);
       this.connected = false;
     });
 
-    // Disconnected
-    this.client.on("close", () => {
-      console.log("🔌 MQTT Disconnected");
+    this.client.on("offline", () => {
+      console.warn("MQTT Offline");
       this.connected = false;
     });
 
-    // Reconnecting
     this.client.on("reconnect", () => {
-      console.log("🔄 MQTT Reconnecting...");
+      console.log("MQTT Reconnecting...");
+    });
+
+    this.client.on("close", () => {
+      if (this.connected) {
+        console.log("MQTT Connection closed");
+        this.connected = false;
+      }
     });
   }
 
-  // Save sensor data to database
+  // Xử lý dữ liệu cảm biến
   async handleSensorData(data) {
+    if (!data || typeof data !== "object") return;
+
     try {
-      const sensorData = new SensorData({
-        temperature: data.temperature,
-        humidity: data.humidity,
-        gasLevel: data.gasLevel,
-        fireDetected: data.fireDetected,
-        timestamp: new Date(),
+      const sensor = new SensorData({
+        deviceId: data.deviceId || "unknown",
+        temperature: data.temperature ?? null,
+        humidity: data.humidity ?? null,
+        gasLevel: data.gasLevel ?? null,
+        flameValue: data.flameValue ?? null,
+        fireDetected: Boolean(data.fireDetected),
+        location: data.location || "Unknown",
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
       });
 
-      await sensorData.save();
-      console.log("💾 Sensor data saved to database");
+      await sensor.save();
+      console.log("Sensor data saved");
 
-      // Check for fire alert
-      if (data.fireDetected) {
-        console.log("🚨 FIRE ALERT DETECTED!");
-        // TODO: Send notification, trigger actions
+      if (sensor.fireDetected) {
+        console.log("FIRE ALERT FROM", sensor.deviceId || "unknown device");
+        // TODO: Gửi Telegram, Push Notification, Email...
       }
-    } catch (error) {
-      console.error("❌ Error saving sensor data:", error);
+    } catch (err) {
+      console.error("Save sensor error:", err.message);
     }
   }
 
-  // Handle device status updates
+  // Xử lý trạng thái thiết bị (heartbeat)
   async handleDeviceStatus(data) {
-    console.log("📊 Device status update:", data);
-    // TODO: Update device status in database
+    if (!data?.deviceId) return;
+
+    try {
+      await Device.heartbeat(data.deviceId, {
+        ipAddress: data.ipAddress,
+        signalStrength: data.signalStrength,
+        uptime: data.uptime,
+        firmwareVersion: data.firmwareVersion,
+      });
+      console.log(`Device ${data.deviceId} heartbeat OK`);
+    } catch (err) {
+      console.error("Heartbeat error:", err.message);
+    }
   }
 
-  // Publish control command to ESP32
+  // Gửi lệnh điều khiển (relay, buzzer, led)
   publishControl(command) {
-    if (!this.connected) {
-      console.error("❌ MQTT not connected, cannot publish");
+    if (!this.connected || !this.client) {
+      console.error("MQTT not connected – cannot send control");
       return false;
     }
 
+    const topic = process.env.MQTT_TOPIC_CONTROL;
     const message = JSON.stringify(command);
-    this.client.publish(
-      process.env.MQTT_TOPIC_CONTROL,
-      message,
-      { qos: 1 },
-      (err) => {
-        if (err) {
-          console.error("❌ Publish error:", err);
-        } else {
-          console.log("📤 Control command sent:", command);
-        }
+
+    this.client.publish(topic, message, { qos: 1 }, (err) => {
+      if (err) {
+        console.error("Publish failed:", err.message);
+      } else {
+        console.log("Control sent:", command);
       }
-    );
+    });
 
     return true;
   }
 
-  // Check connection status
+  // Trạng thái kết nối
   isConnected() {
-    return this.connected;
+    return this.connected && this.client?.connected;
   }
 
-  // Disconnect
+  // Ngắt kết nối sạch sẽ
   disconnect() {
     if (this.client) {
-      this.client.end();
-      console.log("🔌 MQTT Disconnected gracefully");
+      this.client.end(false, () => {
+        console.log("MQTT disconnected gracefully");
+      });
+      this.connected = false;
     }
   }
 }
 
-// Export singleton instance
+// Export singleton
 module.exports = new MQTTHandler();

@@ -1,3 +1,4 @@
+// app/models/device.model.js
 const mongoose = require("mongoose");
 
 const deviceSchema = new mongoose.Schema(
@@ -6,243 +7,154 @@ const deviceSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      default: "ESP32_001",
+      trim: true,
+      uppercase: true,
     },
-    deviceName: {
-      type: String,
-      default: "Fire Detection System",
-    },
-    location: {
-      type: String,
-      default: "Room 1",
-    },
-    isOnline: {
-      type: Boolean,
-      default: false,
-    },
-    lastSeen: {
-      type: Date,
-      default: Date.now,
-    },
-    // Device states
+    deviceName: { type: String, default: "Fire Detection System", trim: true },
+    location: { type: String, default: "Unknown", trim: true },
+
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
+
+    // Device actuators
     relay: {
-      status: {
-        type: String,
-        enum: ["on", "off"],
-        default: "off",
-      },
-      lastChanged: {
-        type: Date,
-        default: Date.now,
-      },
+      status: { type: String, enum: ["on", "off"], default: "off" },
+      lastChanged: { type: Date, default: Date.now },
     },
     buzzer: {
-      status: {
-        type: String,
-        enum: ["on", "off"],
-        default: "off",
-      },
-      lastChanged: {
-        type: Date,
-        default: Date.now,
-      },
+      status: { type: String, enum: ["on", "off"], default: "off" },
+      lastChanged: { type: Date, default: Date.now },
     },
     led: {
-      status: {
-        type: String,
-        enum: ["on", "off", "blink"],
-        default: "off",
-      },
-      lastChanged: {
-        type: Date,
-        default: Date.now,
-      },
+      status: { type: String, enum: ["on", "off", "blink"], default: "off" },
+      lastChanged: { type: Date, default: Date.now },
     },
+
     // System info
-    firmwareVersion: {
-      type: String,
-      default: "1.0.0",
-    },
-    ipAddress: {
-      type: String,
-      default: "",
-    },
-    signalStrength: {
-      type: Number,
-      default: 0,
-      min: -100,
-      max: 0,
-    },
-    uptime: {
-      type: Number,
-      default: 0,
-    },
+    firmwareVersion: { type: String, default: "1.0.0" },
+    ipAddress: { type: String, default: "" },
+    macAddress: { type: String, sparse: true, uppercase: true },
+    signalStrength: { type: Number, default: 0, min: -100, max: 0 },
+    uptime: { type: Number, default: 0 },
+
     // Settings
-    autoMode: {
-      type: Boolean,
-      default: true,
-    },
-    tempThreshold: {
-      type: Number,
-      default: 45.0,
-    },
-    gasThreshold: {
-      type: Number,
-      default: 1500,
-    },
-    humidityLowThreshold: {
-      type: Number,
-      default: 30.0,
-    },
+    autoMode: { type: Boolean, default: true },
+    tempThreshold: { type: Number, default: 45.0, min: 0, max: 100 },
+    gasThreshold: { type: Number, default: 1500, min: 0, max: 4095 },
+    flameThreshold: { type: Number, default: 300, min: 0, max: 1023 },
+    humidityLowThreshold: { type: Number, default: 30.0, min: 0, max: 100 },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
-// Index for faster queries
-deviceSchema.index({ deviceId: 1 });
-deviceSchema.index({ isOnline: 1 });
+// ==================== INDEXES ====================
+deviceSchema.index({ deviceId: 1 }, { unique: true });
+deviceSchema.index({ isOnline: 1, lastSeen: -1 });
+deviceSchema.index({ createdAt: -1 });
 
-// Virtual property for overall device health
+// ==================== VIRTUALS ====================
 deviceSchema.virtual("health").get(function () {
   if (!this.isOnline) return "offline";
 
-  const timeSinceLastSeen = Date.now() - this.lastSeen.getTime();
-  const fiveMinutes = 5 * 60 * 1000;
-
-  if (timeSinceLastSeen > fiveMinutes) return "warning";
-  if (this.signalStrength < -80) return "poor";
+  const minutesSinceLastSeen = (Date.now() - this.lastSeen) / 60000;
+  if (minutesSinceLastSeen > 10) return "offline";
+  if (minutesSinceLastSeen > 3) return "warning";
+  if (this.signalStrength < -85) return "poor";
 
   return "good";
 });
 
-// Instance method to update device status
-deviceSchema.methods.updateStatus = async function (updates) {
-  if (updates.relay !== undefined) {
-    this.relay.status = updates.relay;
+// ==================== METHODS ====================
+// Cập nhật trạng thái relay/buzzer/led
+deviceSchema.methods.updateActuators = async function ({
+  relay,
+  buzzer,
+  led,
+} = {}) {
+  if (relay !== undefined) {
+    this.relay.status = relay;
     this.relay.lastChanged = new Date();
   }
-
-  if (updates.buzzer !== undefined) {
-    this.buzzer.status = updates.buzzer;
+  if (buzzer !== undefined) {
+    this.buzzer.status = buzzer;
     this.buzzer.lastChanged = new Date();
   }
-
-  if (updates.led !== undefined) {
-    this.led.status = updates.led;
+  if (led !== undefined) {
+    this.led.status = led;
     this.led.lastChanged = new Date();
   }
-
-  if (updates.isOnline !== undefined) {
-    this.isOnline = updates.isOnline;
-  }
-
   this.lastSeen = new Date();
-
   return await this.save();
 };
 
-// Instance method to check if device needs attention
-deviceSchema.methods.needsAttention = function () {
-  const timeSinceLastSeen = Date.now() - this.lastSeen.getTime();
-  const tenMinutes = 10 * 60 * 1000;
-
-  return !this.isOnline || timeSinceLastSeen > tenMinutes;
-};
-
-// Static method to get or create default device
-deviceSchema.statics.getDefaultDevice = async function () {
-  let device = await this.findOne({ deviceId: "ESP32_001" });
-
-  if (!device) {
-    device = await this.create({
-      deviceId: "ESP32_001",
-      deviceName: "Fire Detection System",
-      location: "Room 1",
-    });
-  }
-
-  return device;
-};
-
-// Static method to update device heartbeat
-deviceSchema.statics.heartbeat = async function (deviceId, systemInfo = {}) {
-  const device = await this.findOne({ deviceId });
-
-  if (!device) {
-    return await this.create({
-      deviceId,
-      isOnline: true,
-      lastSeen: new Date(),
-      ...systemInfo,
-    });
-  }
-
-  device.isOnline = true;
-  device.lastSeen = new Date();
-
-  if (systemInfo.ipAddress) device.ipAddress = systemInfo.ipAddress;
-  if (systemInfo.signalStrength)
-    device.signalStrength = systemInfo.signalStrength;
-  if (systemInfo.uptime) device.uptime = systemInfo.uptime;
-  if (systemInfo.firmwareVersion)
-    device.firmwareVersion = systemInfo.firmwareVersion;
-
-  return await device.save();
-};
-
-// Static method to mark device as offline
-deviceSchema.statics.markOffline = async function (deviceId) {
+// ==================== STATICS ====================
+// Heartbeat – tự động tạo device nếu chưa có
+deviceSchema.statics.heartbeat = async function (deviceId, info = {}) {
   return await this.findOneAndUpdate(
     { deviceId },
     {
-      isOnline: false,
-      lastSeen: new Date(),
+      $set: {
+        isOnline: true,
+        lastSeen: new Date(),
+        ipAddress: info.ipAddress || null,
+        signalStrength: info.signalStrength ?? null,
+        uptime: info.uptime ?? null,
+        firmwareVersion: info.firmwareVersion || this.firmwareVersion,
+        macAddress: info.macAddress || this.macAddress,
+      },
     },
-    { new: true }
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 };
 
-// Static method to get all devices status
+// Lấy tất cả thiết bị với trạng thái đẹp
 deviceSchema.statics.getAllStatus = async function () {
-  const devices = await this.find().lean();
-
-  return devices.map((device) => ({
-    deviceId: device.deviceId,
-    deviceName: device.deviceName,
-    location: device.location,
-    isOnline: device.isOnline,
-    lastSeen: device.lastSeen,
-    relay: device.relay.status,
-    buzzer: device.buzzer.status,
-    led: device.led.status,
-    health: device.health,
-    signalStrength: device.signalStrength,
-    firmwareVersion: device.firmwareVersion,
-  }));
+  return await this.find({})
+    .sort({ lastSeen: -1 })
+    .lean()
+    .then((devices) =>
+      devices.map((d) => ({
+        deviceId: d.deviceId,
+        deviceName: d.deviceName,
+        location: d.location,
+        isOnline: d.isOnline,
+        lastSeen: d.lastSeen,
+        health: d.health,
+        relay: d.relay.status,
+        buzzer: d.buzzer.status,
+        led: d.led.status,
+        signalStrength: d.signalStrength,
+        firmwareVersion: d.firmwareVersion,
+        uptime: d.uptime,
+        ipAddress: d.ipAddress,
+      }))
+    );
 };
 
-// Pre-save middleware to validate thresholds
+// ==================== MIDDLEWARE ====================
 deviceSchema.pre("save", function (next) {
-  // Validate temperature threshold
-  if (this.tempThreshold < 0 || this.tempThreshold > 100) {
-    return next(new Error("Temperature threshold must be between 0 and 100"));
-  }
+  // Auto uppercase deviceId
+  if (this.deviceId) this.deviceId = this.deviceId.toUpperCase().trim();
 
-  // Validate gas threshold
-  if (this.gasThreshold < 0 || this.gasThreshold > 4095) {
-    return next(new Error("Gas threshold must be between 0 and 4095"));
+  // Validation
+  if (
+    this.isModified("tempThreshold") &&
+    (this.tempThreshold < 20 || this.tempThreshold > 80)
+  ) {
+    return next(new Error("tempThreshold should be 20–80°C"));
   }
-
-  // Validate humidity threshold
-  if (this.humidityLowThreshold < 0 || this.humidityLowThreshold > 100) {
-    return next(new Error("Humidity threshold must be between 0 and 100"));
+  if (
+    this.isModified("gasThreshold") &&
+    (this.gasThreshold < 300 || this.gasThreshold > 3000)
+  ) {
+    return next(new Error("gasThreshold should be 300–3000"));
   }
-
   next();
 });
 
 const Device = mongoose.model("Device", deviceSchema);
-
 module.exports = Device;
