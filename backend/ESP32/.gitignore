@@ -14,7 +14,13 @@ build/
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
+#
+# === BẢO VỆ CÁC FILE QUAN TRỌNG KHỎI BỊ XÓA KHI CHUYỂN BRANCH ===
+!README.md
+!backend/ESP32/README.md
+!backend/ESP32/diagram.json
+!backend/ESP32/.vscode/extensions.json
+!backend/ESP32/include/README.md
 # macOS / Windows
 .DS_Store
 Thumbs.db
