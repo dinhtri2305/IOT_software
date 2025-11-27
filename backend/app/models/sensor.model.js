@@ -22,12 +22,7 @@ const sensorDataSchema = new mongoose.Schema(
       min: [0, "Gas level cannot be negative"],
       max: [4095, "Gas level exceeds ADC range"],
     },
-    flameValue: {
-      type: Number,
-      min: 0,
-      max: 1023,
-      default: null,
-    },
+    // No flame sensor available on target devices; remove flame field
     fireDetected: {
       type: Boolean,
       default: false,
@@ -81,10 +76,7 @@ sensorDataSchema.virtual("alertLevel").get(function () {
 // ==================== INSTANCE METHODS ====================
 sensorDataSchema.methods.isCritical = function () {
   return (
-    this.fireDetected ||
-    this.temperature > 55 ||
-    this.gasLevel > 2500 ||
-    (this.flameValue !== null && this.flameValue < 200)
+    this.fireDetected || this.temperature > 55 || this.gasLevel > 2500 || false
   );
 };
 
@@ -162,15 +154,9 @@ sensorDataSchema.statics.get24hStats = async function (deviceId = null) {
 sensorDataSchema.pre("save", function (next) {
   const tempHigh = this.temperature > 45;
   const gasHigh = this.gasLevel > 1500;
-  const flameLow = this.flameValue !== null && this.flameValue < 300;
 
-  // Chỉ đánh dấu cháy nếu có ít nhất 2 điều kiện (tránh báo giả)
-  if (
-    (tempHigh && gasHigh) ||
-    (tempHigh && flameLow) ||
-    (gasHigh && flameLow) ||
-    flameLow
-  ) {
+  // Mark fire when both temperature and gas are high (avoid false positives)
+  if (tempHigh && gasHigh) {
     this.fireDetected = true;
   } else {
     this.fireDetected = false;

@@ -4,14 +4,8 @@ const Device = require("../models/device.model");
 // Receive data from ESP32 (public endpoint)
 exports.receiveFromESP32 = async (req, res) => {
   try {
-    const {
-      deviceId,
-      temperature,
-      humidity,
-      gasLevel,
-      flameValue,
-      firmwareVersion,
-    } = req.body;
+    const { deviceId, temperature, humidity, gasLevel, firmwareVersion } =
+      req.body;
     if (
       !deviceId ||
       temperature === undefined ||
@@ -28,7 +22,6 @@ exports.receiveFromESP32 = async (req, res) => {
       temperature: Number(temperature),
       humidity: Number(humidity),
       gasLevel: Number(gasLevel),
-      flameValue: flameValue !== undefined ? Number(flameValue) : null,
     });
 
     // Update device heartbeat
@@ -60,13 +53,11 @@ exports.getLatest = async (req, res) => {
       .lean();
     res.json({ success: true, data });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching latest data",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching latest data",
+      error: err.message,
+    });
   }
 };
 
@@ -76,13 +67,11 @@ exports.getCurrent = async (req, res) => {
     const latest = await SensorData.getLatestByDevice(deviceId || null, 1);
     res.json({ success: true, data: latest[0] || null });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching current data",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching current data",
+      error: err.message,
+    });
   }
 };
 
@@ -107,13 +96,11 @@ exports.getHistory = async (req, res) => {
 
     res.json({ success: true, page, limit, total, items });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching history",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching history",
+      error: err.message,
+    });
   }
 };
 
@@ -125,13 +112,11 @@ exports.getFireAlerts = async (req, res) => {
       .lean();
     res.json({ success: true, alerts });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching fire alerts",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching fire alerts",
+      error: err.message,
+    });
   }
 };
 
@@ -153,13 +138,11 @@ exports.getStatistics = async (req, res) => {
     ]);
     res.json({ success: true, stats: agg[0] || {} });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching statistics",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching statistics",
+      error: err.message,
+    });
   }
 };
 
@@ -179,13 +162,11 @@ exports.getChartData = async (req, res) => {
       points: points.map((p) => ({ x: p.timestamp, y: p[type] })),
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error fetching chart data",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching chart data",
+      error: err.message,
+    });
   }
 };
 
@@ -195,13 +176,11 @@ exports.createManual = async (req, res) => {
     const record = await SensorData.create(body);
     res.status(201).json({ success: true, data: record });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error creating manual data",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error creating manual data",
+      error: err.message,
+    });
   }
 };
 
@@ -212,13 +191,11 @@ exports.deleteOldData = async (req, res) => {
     const result = await SensorData.deleteMany({ timestamp: { $lt: cutoff } });
     res.json({ success: true, deletedCount: result.deletedCount });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error deleting old data",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error deleting old data",
+      error: err.message,
+    });
   }
 };
 

@@ -15,9 +15,9 @@ const connectDB = async () => {
         maxPoolSize: 10, // Connection pool (rất quan trọng)
         serverSelectionTimeoutMS: 5000, // Timeout nhanh nếu DB chết
         socketTimeoutMS: 45000, // Đóng socket nếu treo
-        bufferMaxEntries: 0, // Tắt buffer khi DB offline (tránh memory leak)
-        bufferCommands: false, // Tương tự
-        heartbeatFrequencyMS: 10000, // Kiểm tra kết nối mỗi 10s
+        // Note: newer mongoose/mongo drivers no longer support `bufferMaxEntries` and
+        // `bufferCommands` options. They caused runtime errors in modern versions.
+        // heartbeatFrequencyMS: 10000, // Kiểm tra kết nối mỗi 10s (optional)
       });
 
       console.log("MongoDB Connected");

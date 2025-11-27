@@ -74,12 +74,10 @@ exports.controlBuzzer = async (req, res) => {
 exports.controlLED = async (req, res) => {
   const { action, deviceId } = req.body;
   if (!["on", "off", "blink"].includes(action)) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: 'Action must be "on", "off" or "blink"',
-      });
+    return res.status(400).json({
+      success: false,
+      message: 'Action must be "on", "off" or "blink"',
+    });
   }
 
   const success = await sendControlCommand({ led: action }, deviceId);
@@ -142,26 +140,21 @@ exports.getStatus = async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to get device status",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to get device status",
+      error: err.message,
+    });
   }
 };
 
 exports.updateSettings = async (req, res) => {
   try {
-    const { deviceId, autoMode, tempThreshold, gasThreshold, flameThreshold } =
-      req.body;
+    const { deviceId, autoMode, tempThreshold, gasThreshold } = req.body;
     const updateData = {};
     if (autoMode !== undefined) updateData.autoMode = autoMode;
     if (tempThreshold !== undefined) updateData.tempThreshold = tempThreshold;
     if (gasThreshold !== undefined) updateData.gasThreshold = gasThreshold;
-    if (flameThreshold !== undefined)
-      updateData.flameThreshold = flameThreshold;
 
     const device = await Device.findOneAndUpdate(
       { deviceId: deviceId || "ESP32_001" },
@@ -176,13 +169,11 @@ exports.updateSettings = async (req, res) => {
       deviceId: device.deviceId,
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Update settings failed",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Update settings failed",
+      error: err.message,
+    });
   }
 };
 
@@ -210,13 +201,11 @@ exports.heartbeat = async (req, res) => {
       timestamp: new Date(),
     });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Heartbeat failed",
-        error: err.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Heartbeat failed",
+      error: err.message,
+    });
   }
 };
 

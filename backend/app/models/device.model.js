@@ -41,7 +41,6 @@ const deviceSchema = new mongoose.Schema(
     autoMode: { type: Boolean, default: true },
     tempThreshold: { type: Number, default: 45.0, min: 0, max: 100 },
     gasThreshold: { type: Number, default: 1500, min: 0, max: 4095 },
-    flameThreshold: { type: Number, default: 300, min: 0, max: 1023 },
     humidityLowThreshold: { type: Number, default: 30.0, min: 0, max: 100 },
   },
   {
@@ -52,7 +51,7 @@ const deviceSchema = new mongoose.Schema(
 );
 
 // ==================== INDEXES ====================
-deviceSchema.index({ deviceId: 1 }, { unique: true });
+// deviceId has unique: true on the field definition above; avoid duplicate index declarations.
 deviceSchema.index({ isOnline: 1, lastSeen: -1 });
 deviceSchema.index({ createdAt: -1 });
 

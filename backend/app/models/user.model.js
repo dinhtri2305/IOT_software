@@ -65,8 +65,8 @@ const userSchema = new mongoose.Schema(
 );
 
 // ==================== INDEXES ====================
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ username: 1 }, { unique: true });
+// Unique indexes are declared on the fields themselves (unique: true).
+// Keep role indexed for queries.
 userSchema.index({ role: 1 });
 
 // ==================== PRE-SAVE: MÃ HÓA MẬT KHẨU ====================
