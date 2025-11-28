@@ -19,8 +19,8 @@ const sensorDataSchema = new mongoose.Schema(
     gasLevel: {
       type: Number,
       required: true,
-      min: [0, "Gas level cannot be negative"],
-      max: [4095, "Gas level exceeds ADC range"],
+      min: 0,
+      // XÓA DÒNG max: 4095 hoặc max: 10000 đi luôn!
     },
     // No flame sensor available on target devices; remove flame field
     fireDetected: {
@@ -86,8 +86,22 @@ sensorDataSchema.statics.getLatestByDevice = async function (
   deviceId,
   limit = 1
 ) {
-  return await this.find({ deviceId })
-    .sort({ timestamp: -1 })
+  const filter = {};
+  // If a deviceId is provided (non-null/undefined/empty), filter by it,
+  // otherwise return latest across all devices.
+  if (
+    deviceId !== undefined &&
+    deviceId !== null &&
+    String(deviceId).trim() !== ""
+  ) {
+    filter.deviceId = deviceId;
+  }
+
+  // Prefer the most recently received record (server insertion time).
+  // Many devices may send invalid/epoch timestamps, so sort by `createdAt`
+  // first then `timestamp` as a tiebreaker.
+  return await this.find(filter)
+    .sort({ createdAt: -1, timestamp: -1 })
     .limit(limit)
     .lean();
 };
@@ -152,17 +166,18 @@ sensorDataSchema.statics.get24hStats = async function (deviceId = null) {
 
 // ==================== PRE-SAVE: TỰ ĐỘNG PHÁT HIỆN CHÁY ====================
 sensorDataSchema.pre("save", function (next) {
+  // If device explicitly reported `fireDetected: true`, trust that value.
+  // Otherwise compute using server thresholds (temperature + gas).
+  if (this.fireDetected === true) {
+    return next();
+  }
+
   const tempHigh = this.temperature > 45;
   const gasHigh = this.gasLevel > 1500;
 
   // Mark fire when both temperature and gas are high (avoid false positives)
-  if (tempHigh && gasHigh) {
-    this.fireDetected = true;
-  } else {
-    this.fireDetected = false;
-  }
-
-  next();
+  this.fireDetected = !!(tempHigh && gasHigh);
+  return next();
 });
 
 const SensorData = mongoose.model("SensorData", sensorDataSchema);

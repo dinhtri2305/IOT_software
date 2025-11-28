@@ -4,8 +4,15 @@ const Device = require("../models/device.model");
 // Receive data from ESP32 (public endpoint)
 exports.receiveFromESP32 = async (req, res) => {
   try {
-    const { deviceId, temperature, humidity, gasLevel, firmwareVersion } =
-      req.body;
+    const {
+      deviceId,
+      temperature,
+      humidity,
+      gasLevel,
+      firmwareVersion,
+      fireDetected,
+      timestamp,
+    } = req.body;
     if (
       !deviceId ||
       temperature === undefined ||
@@ -17,12 +24,24 @@ exports.receiveFromESP32 = async (req, res) => {
         .json({ success: false, message: "Missing required sensor fields" });
     }
 
-    const record = await SensorData.create({
+    const payload = {
       deviceId,
       temperature: Number(temperature),
       humidity: Number(humidity),
       gasLevel: Number(gasLevel),
-    });
+    };
+
+    // Accept device-provided fireDetected flag if present
+    if (fireDetected !== undefined) payload.fireDetected = !!fireDetected;
+
+    // If device provides a numeric timestamp (e.g., epoch seconds/ms) try to use it
+    if (timestamp !== undefined && timestamp !== null) {
+      const t = Number(timestamp);
+      // If timestamp looks like seconds (<= 1e10), convert to ms
+      payload.timestamp = new Date(t > 1e10 ? t : t * 1000);
+    }
+
+    const record = await SensorData.create(payload);
 
     // Update device heartbeat
     try {
