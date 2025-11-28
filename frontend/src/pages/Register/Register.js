@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import '../App.css';
+import '../../styles/global.css';
+import "../../styles/auth.css"
 import './Register.css';
 
 function Register() {
@@ -200,168 +201,228 @@ function Register() {
     }
   };
 
+  const renderHeadingSubtitle = () => {
+    if (step === 1) {
+      return "Hoàn tất thông tin để nhận cảnh báo và quản lý thiết bị.";
+    }
+    return "Nhập mã OTP gồm 6 chữ số đã được gửi tới email của bạn.";
+  };
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-left">
-          <h1>HotelManager</h1>
-        </div>
-      </header>
+    <div className="auth-page">
+      <div className="auth-shell" id="register">
+        <div className="auth-panel auth-panel--form">
+          <div className="auth-heading">
+            <p>Xin chào!</p>
+            <h1>Tạo tài khoản mới</h1>
+            <p>{renderHeadingSubtitle()}</p>
+          </div>
 
-      <main className="main-content">
-        <div className="header-container">
-          <h2>Đăng ký</h2>
-          <Link to="/login" className="back-button">
-            <img src="/icons/Navigate.png" alt="Back" />
-          </Link>
-        </div>
-
-        <div className="register-container">
           {step === 1 && (
-            <div className="register-card">
-              <form onSubmit={handleSubmit}>
-                <div className="grid-container">
-                  <div className="form-group_name_reg">
-                    <label htmlFor="name">
+            <>
+              <form onSubmit={handleSubmit} className="auth-form">
+                <div className="auth-grid register-grid-two">
+                  <div className="auth-field">
+                    <label htmlFor="name" className="auth-label">
                       Họ và tên <span className="required">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      placeholder="Nhập họ và tên của bạn"
-                      value={name}
-                      onChange={(e) => {
-                        setName(e.target.value);
-                        setErrors((prev) => ({ ...prev, name: '' }));
-                        setMessage("")
-                      }}
-                    />
-                    {/* Luôn render span để dành chỗ */}
-                    <span className="error-message_reg">{errors.name || "\u00A0"}</span>
+                    <div
+                      className={`auth-input ${errors.name ? "has-error" : ""}`}
+                    >
+                      <span className="auth-icon">
+                        <img src="/assets/id-card.png" alt="Name" loading="lazy" />
+                      </span>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        placeholder="Nhập họ và tên"
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          setErrors((prev) => ({ ...prev, name: "" }));
+                          setMessage("");
+                        }}
+                      />
+                    </div>
+                    <span className="auth-error">{errors.name || "\u00A0"}</span>
                   </div>
 
-                  <div className="form-group_email_reg">
-                    <label htmlFor="email">
+                  <div className="auth-field">
+                    <label htmlFor="email" className="auth-label">
                       Email <span className="required">*</span>
                     </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      placeholder="Nhập email của bạn"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setErrors((prev) => ({ ...prev, email: '' }));
-                        setMessage("")
-                      }}
-                    />
-                    <span className="error-message_reg">{errors.email || "\u00A0"}</span>
+                    <div
+                      className={`auth-input ${errors.email ? "has-error" : ""}`}
+                    >
+                      <span className="auth-icon">
+                        <img src="/assets/mail.png" alt="Email" loading="lazy" />
+                      </span>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Nhập email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setErrors((prev) => ({ ...prev, email: "" }));
+                          setMessage("");
+                        }}
+                      />
+                    </div>
+                    <span className="auth-error">{errors.email || "\u00A0"}</span>
                   </div>
 
-                  <div className="form-group_pass_reg">
-                    <label htmlFor="password">
+                  <div className="auth-field">
+                    <label htmlFor="password" className="auth-label">
                       Mật khẩu <span className="required">*</span>
                     </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      placeholder="Nhập mật khẩu"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, password: '' }));
-                        setMessage("")
-                      }}
-                    />
-                    <span className="error-message_reg">{errors.password || "\u00A0"}</span>
+                    <div
+                      className={`auth-input ${errors.password ? "has-error" : ""}`}
+                    >
+                      <span className="auth-icon">
+                        <img src="/assets/key.png" alt="Password" loading="lazy" />
+                      </span>
+                      <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Nhập mật khẩu"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setErrors((prev) => ({ ...prev, password: "" }));
+                          setMessage("");
+                        }}
+                      />
+                    </div>
+                    <span className="auth-error">
+                      {errors.password || "\u00A0"}
+                    </span>
                   </div>
 
-                  <div className="form-group_confirm_pass_reg">
-                    <label htmlFor="confirm_password">
+                  <div className="auth-field">
+                    <label htmlFor="confirm_password" className="auth-label">
                       Xác nhận mật khẩu <span className="required">*</span>
                     </label>
-                    <input
-                      type="password"
-                      id="confirm_password"
-                      name="confirm_password"
-                      placeholder="Nhập lại mật khẩu"
-                      value={repassword}
-                      onChange={(e) => {
-                        setRepassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, repassword: '' }));
-                        setMessage("")
-                      }}
-                    />
-                    <span className="error-message_reg">{errors.repassword || "\u00A0"}</span>
+                    <div
+                      className={`auth-input ${errors.repassword ? "has-error" : ""}`}
+                    >
+                      <span className="auth-icon">
+                        <img src="/assets/lock.png" alt="Confirm" loading="lazy" />
+                      </span>
+                      <input
+                        type="password"
+                        id="confirm_password"
+                        name="confirm_password"
+                        placeholder="Nhập lại mật khẩu"
+                        value={repassword}
+                        onChange={(e) => {
+                          setRepassword(e.target.value);
+                          setErrors((prev) => ({ ...prev, repassword: "" }));
+                          setMessage("");
+                        }}
+                      />
+                    </div>
+                    <span className="auth-error">
+                      {errors.repassword || "\u00A0"}
+                    </span>
                   </div>
                 </div>
-
-                <div className="checkbox-group">
-                  <input
-                    type="checkbox"
-                    id="acceptance"
-                    name="acceptance"
-                    checked={acceptance}
-                    onChange={(e) => {
-                      setAcceptance(e.target.checked);
-                      setErrors((prev) => ({ ...prev, acceptance: '' }));
-                      setMessage("")
-                    }}
-                  />
-                  <label htmlFor="acceptance">
-                    Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật <span className="required">*</span>
+                
+                <div className="register-confirm">
+                  <label className="auth-checkbox">
+                    <input
+                      type="checkbox"
+                      id="acceptance"
+                      name="acceptance"
+                      checked={acceptance}
+                      onChange={(e) => {
+                        setAcceptance(e.target.checked);
+                        setErrors((prev) => ({ ...prev, acceptance: "" }));
+                        setMessage("");
+                      }}
+                    />
+                    Tôi đồng ý với điều khoản và chính sách bảo mật{" "}
+                    <span className="required">*</span>
                   </label>
                 </div>
-                <span className="error-message_reg">
+                <span className="auth-error">
                   {errors.acceptance || "\u00A0"}
                 </span>
-
-                <button type="submit" className="register-button">
+                
+                
+                <button type="submit" className="auth-primary-btn">
                   Đăng ký
                 </button>
-                <span className={`error-message-register ${messageType}`} dangerouslySetInnerHTML={{ __html: message || "\u00A0" }}></span>
+                <span
+                  className={`auth-error auth-error--center ${
+                    messageType === "success" ? "auth-error--success" : ""
+                  }`}
+                  dangerouslySetInnerHTML={{ __html: message || "\u00A0" }}
+                ></span>
               </form>
-
-              <div className="login">
-                <span>Đã có tài khoản? </span>
-                <Link to="/login">Đăng nhập</Link>
-              </div>
-            </div>
+            </>
           )}
 
           {step === 2 && (
-            <div className="register-card register-card-otp">
-              <form>
-                <div className="register-form-otp">
-                  <label>Nhập mã OTP <span className="required">*</span></label>
-                  <div className="register-warning-message">
-                  Chức năng OTP đang được cải tiến. Vui lòng lấy mã OTP trong console.
-                  </div>
-                  <div className="register-otp-container">
-                    {otp.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={otpRefs[index]}
-                        type="text"
-                        maxLength="1"
-                        className="register-otp-input"
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                      />
-                    ))}
-                  </div>
-                  <span className={`error-message-register ${messageType}`} dangerouslySetInnerHTML={{ __html: message || "\u00A0" }}></span>
-                </div>
-              </form>
+            <div className="auth-otp-panel">
+              <div className="auth-otp-container">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={otpRefs[index]}
+                    type="text"
+                    maxLength="1"
+                    className="auth-otp-input"
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                  />
+                ))}
+              </div>
+              <span
+                className={`auth-error auth-error--center ${
+                  messageType === "success" ? "auth-error--success" : ""
+                }`}
+                dangerouslySetInnerHTML={{ __html: message || "\u00A0" }}
+              ></span>
             </div>
           )}
-
+          <div className="auth-switch">
+            <span>Đã có tài khoản?</span>
+            <Link to="/login" className="auth-link auth-link--accent">
+              Đăng nhập
+            </Link>
           </div>
-      </main>
+        </div>
+
+        <div className="auth-panel auth-panel--hero register-hero">
+          <div className="brand">
+            <div className="brand-icon">
+              <img src="/assets/defence.png" alt="Logo" loading="lazy" />
+            </div>
+            <span>FireForecast</span>
+          </div>
+
+          <div className="auth-hero-copy">
+            <h2>Bảo vệ an toàn dữ liệu</h2>
+            <p>
+              Đăng ký để đồng bộ hệ thống, quản lý người dùng và kích hoạt các
+              cảnh báo phòng cháy tức thời.
+            </p>
+          </div>
+
+          <div className="auth-illustration">
+            <img
+              src="/assets/register.png"
+              alt="Đăng ký FireForecast"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
+
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 import ForgotPassword from "./pages/ForgotPassword/ForgotPassword";
+import { AuthProvider } from "./utils/AuthContext";
 
 function App() {
   return (
@@ -15,6 +18,11 @@ function App() {
       {/* Protected routes */}
       <Route
         path="/*"
+        element={
+          <AuthProvider>
+            
+          </AuthProvider>
+        }
       />
     </Routes>
   );

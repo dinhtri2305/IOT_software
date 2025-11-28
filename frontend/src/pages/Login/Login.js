@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import "../App.css";
+import "../../styles/global.css";
+import "../../styles/auth.css"
 import "./Login.css";
 
 function Login() {
@@ -19,15 +20,13 @@ function Login() {
       localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token) {
       navigate("/HomePage");
-      // navigate("/");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Hàm kiểm tra định dạng email
-  const validateEmail = (email) => {
+  const validateEmail = (value) => {
     const regex = /\S+@\S+\.\S+/;
-    return regex.test(email);
+    return regex.test(value);
   };
 
   // Hàm kiểm tra form
@@ -53,15 +52,14 @@ function Login() {
 
     if (validateForm()) {
       try {
-        const response = await axios.post("http://localhost:5000/api/auth/login", {
-          email,
-          password
-        });
-        
+        const response = await axios.post("http://localhost:5000/api/auth/login",
+          {
+            email,
+            password,
+          }
+        );
+
         if (response.status === 200) {
-          console.log("Đăng nhập thành công");
-          
-          // Xử lý remember me
           if (remember) {
             // Nếu remember -> lưu vào localStorage
             localStorage.setItem("token", response.data.token);
@@ -74,22 +72,13 @@ function Login() {
           }
           
           navigate("/HomePage");
-        }   
-      } 
-
-      catch (error) {
-        if (error.response.status === 400) {
-          console.log("");
+        }
+      } catch (error) {
+        if (error.response?.status === 400) {
           setMessage("Tài khoản hoặc mật khẩu không đúng");
-        }
-        
-        else if (error.response.status === 500) {
-          console.log("Lỗi từ server");
+        } else if (error.response?.status === 500) {
           setMessage("Lỗi từ server");
-        }
-
-        else {
-          console.log("Lỗi không xác định");
+        } else {
           setMessage("Lỗi không xác định");
         }
       }
@@ -97,46 +86,54 @@ function Login() {
   };
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-left">
-          <h1>HotelManager</h1>
-        </div>
-      </header>
+    <div className="auth-page">
+      <div className="auth-shell">
+        <div className="auth-panel auth-panel--form">
+          <div className="auth-heading">
+            <p>Chào mừng đến với FireForecast!</p>
+            <h1>Đăng nhập tài khoản</h1>
+            <p>Nhập thông tin để tiếp tục quản lý hệ thống cảnh báo.</p>
+          </div>
 
-      <main className="main-content">
-        <div className="header-container">
-          <h2>Đăng nhập</h2>
-        </div>
-
-        <div className="login-container">
-          <div className="login-card">
-            <form onSubmit={handleSubmit}>
-              <div className="form-group_email">
-                <label htmlFor="email">
-                  Email <span className="required">*</span>
-                </label>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">
+                Email <span className="required">*</span>
+              </label>
+              <div
+                className={`auth-input ${errors.email ? "has-error" : ""}`}
+                data-error={errors.email}
+              >
+                <span className="auth-icon">
+                  <img src="/assets/mail.png" alt="Mail icon" loading="lazy" />
+                </span>
                 <input
                   type="email"
                   id="email"
                   name="email"
-                  placeholder="Nhập email của bạn"
+                  placeholder="Nhập email"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     setErrors((prev) => ({ ...prev, email: "" }));
                     setMessage("");
                   }}
+                  autoComplete="email"
                 />
-                <span className="error-message_log">
-                  {errors.email || "\u00A0"}
-                </span>
               </div>
+              <span className="auth-error">{errors.email || "\u00A0"}</span>
+            </div>
 
-              <div className="form-group_pass">
-                <label htmlFor="password">
-                  Mật khẩu <span className="required">*</span>
-                </label>
+            <div className="auth-field">
+              <label htmlFor="password" className="auth-label">
+                Mật khẩu <span className="required">*</span>
+              </label>
+              <div
+                className={`auth-input ${errors.password ? "has-error" : ""}`}
+              >
+                <span className="auth-icon">
+                  <img src="/assets/lock.png" alt="Lock icon" loading="lazy" />
+                </span>
                 <input
                   type="password"
                   id="password"
@@ -148,13 +145,14 @@ function Login() {
                     setErrors((prev) => ({ ...prev, password: "" }));
                     setMessage("");
                   }}
+                  autoComplete="current-password"
                 />
-                <span className="error-message_log">
-                  {errors.password || "\u00A0"}
-                </span>
               </div>
+              <span className="auth-error">{errors.password || "\u00A0"}</span>
+            </div>
 
-              <div className="checkbox-group">
+            <div className="auth-extra">
+              <label className="auth-checkbox">
                 <input
                   type="checkbox"
                   id="remember"
@@ -165,26 +163,54 @@ function Login() {
                     setMessage("");
                   }}
                 />
-                <label htmlFor="remember">Ghi nhớ đăng nhập</label>
-              </div>
-
-              <button type="submit" className="login-button">
-                Đăng nhập
-              </button>
-              <span className="error-message_log">{message || "\u00A0"}</span>
-            </form>
-
-            <div className="forgot-password">
-              <Link to="/forgot_password">Quên mật khẩu?</Link>
+                Ghi nhớ đăng nhập
+              </label>
+              <Link to="/forgot_password" className="auth-link">
+                Quên mật khẩu?
+              </Link>
             </div>
 
-            <div className="register">
-              <span>Chưa có tài khoản? </span>
-              <Link to="/register">Đăng ký ngay</Link>
-            </div>
+            <button type="submit" className="auth-primary-btn">
+              Đăng nhập
+            </button>
+            <span className="auth-error auth-error--center">
+              {message || "\u00A0"}
+            </span>
+          </form>
+          
+          <div className="auth-switch">
+            <span>Chưa có tài khoản?</span>
+            <Link to="/register" className="auth-link auth-link--accent">
+              Đăng ký ngay
+            </Link>
           </div>
         </div>
-      </main>
+
+        <div className="auth-panel auth-panel--hero login-hero">
+          <div className="brand">
+            <div className="brand-icon">
+              <img src="/assets/defence.png" alt="Logo" loading="lazy" />
+            </div>
+            <span>FireForecast</span>
+          </div>
+
+          <div className="auth-hero-copy">
+            <h2>An toàn phòng cháy</h2>
+            <p>
+              Theo dõi cảm biến và nhận cảnh báo tức thời để bảo vệ cộng đồng
+              của bạn.
+            </p>
+          </div>
+
+          <div className="auth-illustration">
+            <img
+              src="/assets/login.png"
+              alt="Đăng nhập FireForecast"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
