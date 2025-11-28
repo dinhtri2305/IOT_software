@@ -1,7 +1,3 @@
-.required {
-    color: #ff4d4d;
-  }
-  
 .auth-page {
 min-height: 100vh;
 display: flex;
@@ -203,10 +199,11 @@ min-height: 18px;
 
 .auth-error--center {
 text-align: center;
+font-size: 16px;
 }
 
 .auth-error--success {
-color: #22b573;
+color: #22b573 !important;
 }
 
 .auth-extra {
@@ -328,6 +325,10 @@ margin-bottom: -50px;
 width: 100%;
 max-width: 420px;
 object-fit: contain;
+}
+
+.required {
+    color: #ff4d4d;
 }
 
 @media (max-width: 960px) {

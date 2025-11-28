@@ -105,7 +105,7 @@ function Login() {
                 data-error={errors.email}
               >
                 <span className="auth-icon">
-                  <img src="/assets/mail.png" alt="Mail icon" loading="lazy" />
+                  <img src="/assets/mail.png" alt="Mail icon" loading="eager" />
                 </span>
                 <input
                   type="email"
@@ -132,7 +132,7 @@ function Login() {
                 className={`auth-input ${errors.password ? "has-error" : ""}`}
               >
                 <span className="auth-icon">
-                  <img src="/assets/lock.png" alt="Lock icon" loading="lazy" />
+                  <img src="/assets/lock.png" alt="Lock icon" loading="eager" />
                 </span>
                 <input
                   type="password"
@@ -189,7 +189,7 @@ function Login() {
         <div className="auth-panel auth-panel--hero login-hero">
           <div className="brand">
             <div className="brand-icon">
-              <img src="/assets/defence.png" alt="Logo" loading="lazy" />
+              <img src="/assets/defence.png" alt="Logo" loading="eager" />
             </div>
             <span>FireForecast</span>
           </div>
@@ -206,7 +206,7 @@ function Login() {
             <img
               src="/assets/login.png"
               alt="Đăng nhập FireForecast"
-              loading="lazy"
+              loading="eager"
             />
           </div>
         </div>

@@ -230,7 +230,7 @@ function Register() {
                       className={`auth-input ${errors.name ? "has-error" : ""}`}
                     >
                       <span className="auth-icon">
-                        <img src="/assets/id-card.png" alt="Name" loading="lazy" />
+                        <img src="/assets/id-card.png" alt="Name" loading="eager"/>
                       </span>
                       <input
                         type="text"
@@ -256,7 +256,7 @@ function Register() {
                       className={`auth-input ${errors.email ? "has-error" : ""}`}
                     >
                       <span className="auth-icon">
-                        <img src="/assets/mail.png" alt="Email" loading="lazy" />
+                        <img src="/assets/mail.png" alt="Email" loading="eager" />
                       </span>
                       <input
                         type="email"
@@ -282,7 +282,7 @@ function Register() {
                       className={`auth-input ${errors.password ? "has-error" : ""}`}
                     >
                       <span className="auth-icon">
-                        <img src="/assets/key.png" alt="Password" loading="lazy" />
+                        <img src="/assets/key.png" alt="Password" loading="eager" />
                       </span>
                       <input
                         type="password"
@@ -310,7 +310,7 @@ function Register() {
                       className={`auth-input ${errors.repassword ? "has-error" : ""}`}
                     >
                       <span className="auth-icon">
-                        <img src="/assets/lock.png" alt="Confirm" loading="lazy" />
+                        <img src="/assets/lock.png" alt="Confirm" loading="eager" />
                       </span>
                       <input
                         type="password"
@@ -390,6 +390,7 @@ function Register() {
               ></span>
             </div>
           )}
+          
           <div className="auth-switch">
             <span>Đã có tài khoản?</span>
             <Link to="/login" className="auth-link auth-link--accent">
@@ -401,7 +402,7 @@ function Register() {
         <div className="auth-panel auth-panel--hero register-hero">
           <div className="brand">
             <div className="brand-icon">
-              <img src="/assets/defence.png" alt="Logo" loading="lazy" />
+              <img src="/assets/defence.png" alt="Logo" loading="eager" />
             </div>
             <span>FireForecast</span>
           </div>
@@ -418,7 +419,7 @@ function Register() {
             <img
               src="/assets/register.png"
               alt="Đăng ký FireForecast"
-              loading="lazy"
+              loading="eager"
             />
           </div>
         </div>

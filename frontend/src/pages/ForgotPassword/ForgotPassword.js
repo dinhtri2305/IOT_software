@@ -241,7 +241,7 @@ function ForgotPassword() {
                   className={`auth-input ${errors.email ? "has-error" : ""}`}
                 >
                   <span className="auth-icon">
-                    <img src="/assets/mail.png" alt="Email" loading="lazy" />
+                    <img src="/assets/mail.png" alt="Email" loading="eager" />
                   </span>
                   <input
                     type="email"
@@ -309,7 +309,7 @@ function ForgotPassword() {
                     }`}
                   >
                     <span className="auth-icon">
-                      <img src="/assets/key.png" alt="Mật khẩu" loading="lazy" />
+                      <img src="/assets/key.png" alt="Mật khẩu" loading="eager"/>
                     </span>
                     <input
                       type="password"
@@ -341,7 +341,7 @@ function ForgotPassword() {
                       <img
                         src="/assets/lock.png"
                         alt="Xác nhận mật khẩu"
-                        loading="lazy"
+                        loading="eager"
                       />
                     </span>
                     <input
@@ -373,6 +373,7 @@ function ForgotPassword() {
               ></span>
             </form>
           )}
+          
           <div className="auth-switch">
             <span>Nhớ mật khẩu rồi?</span>
             <Link to="/login" className="auth-link auth-link--accent">
@@ -384,7 +385,7 @@ function ForgotPassword() {
         <div className="auth-panel auth-panel--hero forgot-hero">
           <div className="brand">
             <div className="brand-icon">
-              <img src="/assets/defence.png" alt="Logo" loading="lazy" />
+              <img src="/assets/defence.png" alt="Logo" loading="eager" />
             </div>
             <span>FireForecast</span>
           </div>
@@ -401,7 +402,7 @@ function ForgotPassword() {
             <img
               src="/assets/forgot-pass.png"
               alt="Khôi phục mật khẩu"
-              loading="lazy"
+              loading="eager"
             />
           </div>
         </div>
