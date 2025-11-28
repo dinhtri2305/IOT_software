@@ -72,13 +72,12 @@ router.get(
   sensorController.getChartData
 );
 
-// Tạo dữ liệu giả để test (chỉ admin)
-router.post("/manual", authorize("admin"), sensorController.createManual);
+// Tạo dữ liệu giả để test (yêu cầu authenticated)
+router.post("/manual", sensorController.createManual);
 
-// Xóa dữ liệu cũ (chỉ admin)
+// Xóa dữ liệu cũ (yêu cầu authenticated)
 router.delete(
   "/cleanup",
-  authorize("admin"),
   queryValidator([{ name: "days", type: "number", required: true, min: 1 }]),
   validate,
   sensorController.deleteOldData
