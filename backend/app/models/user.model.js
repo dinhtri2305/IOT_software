@@ -41,6 +41,18 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // Currently active auth token for single-session enforcement (select:false)
+  currentAuthToken: {
+    type: String,
+    select: false,
+    default: null,
+  },
+  // The clientId (cookie) that currently holds the active session for this user
+  currentClientId: {
+    type: String,
+    select: false,
+    default: null,
+  },
 });
 
 // Trong User model - thêm điều kiện để tránh hash lại

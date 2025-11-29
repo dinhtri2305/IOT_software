@@ -39,21 +39,58 @@ exports.register = async (req, res) => {
     // prefer hashing or using a verification token flow.
     await PendingUser.create({ email, password, otp, otpExpiresAt });
 
-    // Try to send OTP by email; fall back to returning OTP in response for dev
-    try {
-      await sendEmail({
-        to: email,
-        subject: "Your registration OTP",
-        text: `OTP: ${otp}`,
-      });
-    } catch (e) {
-      // ignore send errors for now
+    // Decide if we should run in dev mode and skip sending email entirely.
+    // If FORCE_DEV_OTP=true or not in production, skip calling sendEmail to avoid SMTP errors.
+    const forceDev = process.env.FORCE_DEV_OTP === "true";
+    const skipEmail = forceDev || process.env.NODE_ENV !== "production";
+
+    let sendResult = null;
+    if (skipEmail) {
+      // Do not attempt SMTP in dev/testing; mark as dev so OTP is returned below
+      sendResult = { dev: true };
+      console.log(
+        "register: skipping sendEmail (dev/testing or FORCE_DEV_OTP=true)"
+      );
+    } else {
+      try {
+        sendResult = await sendEmail({
+          to: email,
+          subject: "Your registration OTP",
+          text: `OTP: ${otp}`,
+        });
+      } catch (e) {
+        // If sending fails, log and fall back to dev behavior (returning OTP)
+        console.warn("sendEmail failed for registration OTP:", e.message);
+        sendResult = null;
+      }
+    }
+
+    // Decide whether to return OTP in response:
+    // - explicit override: FORCE_DEV_OTP=true
+    // - development mode (NODE_ENV !== 'production')
+    // - sendEmail indicated dev mode (sendResult.dev)
+    // - sendEmail failed (sendResult is null/undefined)
+    const isDev =
+      forceDev ||
+      process.env.NODE_ENV !== "production" ||
+      (sendResult && sendResult.dev) ||
+      !sendResult;
+
+    if (!sendResult) {
+      console.warn(
+        "register: sendEmail failed or was skipped; returning OTP in response for dev/testing"
+      );
+    }
+
+    // For development/testing: print the OTP to the server console so devs can see it
+    if (isDev) {
+      console.log(`Registration OTP for ${email}: ${otp}`);
     }
 
     return res.status(200).json({
       success: true,
-      message: "OTP sent to email (or returned in response for dev)",
-      otp,
+      message: "OTP generated for registration",
+      ...(isDev ? { otp } : {}),
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -93,15 +130,10 @@ exports.verifyRegistrationOTP = async (req, res) => {
     // Remove pending
     await PendingUser.deleteOne({ email });
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
-
+    // Do NOT return an authentication token here. User has only verified email/OTP;
+    // require explicit login to obtain an auth token.
     return res.status(201).json({
-      message: "Registration verified",
-      token,
+      message: "Registration verified. Please login to continue.",
       user: { id: user._id, email: user.email },
     });
   } catch (error) {
@@ -115,6 +147,7 @@ exports.verifyRegistrationOTP = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const clientId = req.clientId || null;
 
     // console.log('Login attempt for:', email);
     // console.log('Password provided:', password);
@@ -123,8 +156,10 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Email và mật khẩu là bắt buộc" });
     }
 
-    // Find user and include password field
-    const user = await User.findOne({ email }).select("+password");
+    // Find user and include password and currentAuthToken fields
+    const user = await User.findOne({ email }).select(
+      "+password +currentAuthToken"
+    );
     // console.log('User found:', user ? 'Yes' : 'No');
 
     if (!user) {
@@ -148,12 +183,100 @@ exports.login = async (req, res) => {
         .json({ message: "Email hoặc mật khẩu không đúng" });
     }
 
+    // If the request already carries an Authorization token for a different user,
+    // block switching accounts until that token is logged out. This prevents
+    // silently switching users in the same client without logout.
+    let incomingAuthToken = null;
+    if (
+      req.headers &&
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      incomingAuthToken = req.headers.authorization.split(" ")[1];
+    }
+
+    if (incomingAuthToken) {
+      try {
+        const incomingDecoded = jwt.verify(
+          incomingAuthToken,
+          process.env.JWT_SECRET
+        );
+        // If the incoming token has been blacklisted (logout), ignore it and allow login
+        const blacklisted = await BlacklistedToken.findOne({
+          token: incomingAuthToken,
+        });
+        if (
+          !blacklisted &&
+          incomingDecoded &&
+          incomingDecoded.id &&
+          String(incomingDecoded.id) !== String(user._id)
+        ) {
+          // There's an active session for a different user on this client
+          return res.status(400).json({
+            message:
+              "Already authenticated as a different user. Please logout before switching accounts.",
+          });
+        }
+      } catch (e) {
+        // incoming token invalid/expired -> ignore and allow login to proceed
+      }
+    }
+
+    // Enforce single-session per client: if this client already has a different
+    // active user session, block switching accounts until that client logs out.
+    if (clientId) {
+      const other = await User.findOne({ currentClientId: clientId }).select(
+        "+currentAuthToken +email"
+      );
+      if (other && String(other._id) !== String(user._id)) {
+        // If the other user's currentAuthToken is still valid and not blacklisted,
+        // prevent switching accounts on this client.
+        try {
+          const ok = jwt.verify(other.currentAuthToken, process.env.JWT_SECRET);
+          const isBlacklisted = await BlacklistedToken.findOne({
+            token: other.currentAuthToken,
+          });
+          if (ok && !isBlacklisted) {
+            return res.status(400).json({
+              message:
+                "This client already has an active logged-in account. Please logout first.",
+            });
+          }
+        } catch (e) {
+          // other token invalid/expired — allow login
+        }
+      }
+    }
+
+    // Enforce single-session: if user already has an active currentAuthToken, block login
+    if (user.currentAuthToken) {
+      try {
+        jwt.verify(user.currentAuthToken, process.env.JWT_SECRET);
+        // If verification succeeds, token is still valid — require logout first
+        return res.status(400).json({
+          message:
+            "User already logged in. Logout first to create a new session.",
+        });
+      } catch (e) {
+        // old token invalid/expired — allow login
+      }
+    }
+
     // Generate token
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
+
+    // Save active token to user document (single-session enforcement)
+    try {
+      user.currentAuthToken = token;
+      if (clientId) user.currentClientId = clientId;
+      await user.save({ validateBeforeSave: false });
+    } catch (e) {
+      console.warn("Could not save currentAuthToken on login:", e.message);
+    }
 
     res.status(200).json({
       message: "Đăng nhập thành công",
@@ -196,8 +319,67 @@ exports.logout = async (req, res) => {
     }
     const expiresAt = new Date(decoded.exp * 1000);
 
-    // save token to blacklist
-    await BlacklistedToken.create({ token, expiresAt });
+    // If token already blacklisted, treat logout as idempotent: still try to
+    // clear user's currentAuthToken if needed, then inform client that token
+    // was already revoked.
+    try {
+      const existing = await BlacklistedToken.findOne({ token });
+      if (existing) {
+        // Try to clear user's currentAuthToken if it still matches
+        try {
+          if (decoded && decoded.id) {
+            const u = await User.findById(decoded.id).select(
+              "+currentAuthToken"
+            );
+            if (u && u.currentAuthToken === token) {
+              u.currentAuthToken = null;
+              u.currentClientId = null;
+              await u.save({ validateBeforeSave: false });
+            }
+          }
+        } catch (e) {
+          console.warn(
+            "logout: failed to clear user.currentAuthToken on idempotent logout",
+            e.message
+          );
+        }
+
+        return res
+          .status(200)
+          .json({ message: "Token already revoked (idempotent logout)" });
+      }
+    } catch (e) {
+      console.warn(
+        "logout: error checking existing blacklist entry",
+        e.message
+      );
+    }
+
+    // save token to blacklist (upsert to avoid race duplicate-key)
+    try {
+      await BlacklistedToken.updateOne(
+        { token },
+        { $setOnInsert: { token, expiresAt } },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.error("Failed to add token to blacklist:", e.message);
+      throw e;
+    }
+
+    // Also clear currentAuthToken on the user if it matches this token
+    try {
+      if (decoded && decoded.id) {
+        const u = await User.findById(decoded.id).select("+currentAuthToken");
+        if (u && u.currentAuthToken === token) {
+          u.currentAuthToken = null;
+          u.currentClientId = null;
+          await u.save({ validateBeforeSave: false });
+        }
+      }
+    } catch (e) {
+      console.warn("logout: failed to clear user.currentAuthToken", e.message);
+    }
 
     return res.status(200).json({ message: "Logout successful" });
   } catch (error) {

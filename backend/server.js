@@ -20,6 +20,10 @@ const userRoutes = require("./app/routes/user.routes");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Client id middleware (assigns HttpOnly clientId cookie)
+const ensureClientId = require("./app/middleware/client.middleware");
+app.use(ensureClientId);
+
 // ========================================
 // MIDDLEWARE
 // ========================================

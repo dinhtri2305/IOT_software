@@ -2,120 +2,153 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
 const BlacklistedToken = require("../models/blackListedToken.model");
 
-// Protect routes - check if user is authenticated
+const extractToken = (req) => {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    return req.headers.authorization.split(" ")[1];
+  }
+  return null;
+};
+
 exports.protect = async (req, res, next) => {
   try {
-    let token;
-
-    // Check if token exists in headers
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    const token = extractToken(req);
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized, please login",
+        message: "Không có token. Vui lòng đăng nhập.",
       });
     }
 
-    // Check if token is blacklisted (logged out)
-    const found = await BlacklistedToken.findOne({ token });
-    if (found) {
+    // Check blacklist
+    const revoked = await BlacklistedToken.findOne({ token });
+    if (revoked) {
       return res
         .status(401)
-        .json({ success: false, message: "Token revoked, please login" });
+        .json({
+          success: false,
+          message: "Token đã bị thu hồi. Vui lòng đăng nhập lại.",
+        });
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (err) {
+      // Token hết hạn
+      if (err.name === "TokenExpiredError") {
+        return res
+          .status(401)
+          .json({
+            success: false,
+            message: "Token hết hạn. Vui lòng đăng nhập lại.",
+          });
+      }
 
-    // Get user from token
-    const user = await User.findById(decoded.id);
+      return res.status(401).json({
+        success: false,
+        message: "Token không hợp lệ.",
+      });
+    }
+
+    // Reset token không được dùng cho các route bình thường
+    if (decoded.isPasswordReset) {
+      return res.status(401).json({
+        success: false,
+        message: "Reset token không dùng để truy cập trang này.",
+      });
+    }
+
+    // Check user
+    const user = await User.findById(decoded.id).select("+currentAuthToken");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message: "Không tìm thấy người dùng.",
       });
     }
 
-    // Only block if account is explicitly deactivated (false).
+    // Check account active
     if (user.isActive === false) {
       return res.status(401).json({
         success: false,
-        message: "Account is deactivated",
+        message: "Tài khoản đã bị vô hiệu hoá.",
       });
     }
 
-    // Attach user to request (only necessary fields)
+    // Check single-session
+    if (user.currentAuthToken && user.currentAuthToken !== token) {
+      return res.status(401).json({
+        success: false,
+        message: "Phiên đăng nhập đã bị thay đổi. Vui lòng đăng nhập lại.",
+      });
+    }
+
+    // Attached to request
     req.user = {
       id: user._id,
       email: user.email,
     };
 
     next();
-  } catch (error) {
-    return res.status(401).json({
+  } catch (err) {
+    return res.status(500).json({
       success: false,
-      message: "Not authorized, token failed",
-      error: error.message,
+      message: "Lỗi xác thực",
+      error: err.message,
     });
   }
 };
 
-// Remove role-based admin checks — simplified: only require authentication
+// Simplified, only check logged-in
 exports.admin = (req, res, next) => {
-  // Deprecated: treat as protected route for authenticated users
   if (req.user) return next();
-  return res.status(403).json({ success: false, message: "Not authorized" });
+  return res
+    .status(403)
+    .json({ success: false, message: "Không có quyền truy cập" });
 };
 
-// authorize is now a no-op wrapper that only ensures authentication
-exports.authorize = () => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Not authorized" });
-    }
-    next();
-  };
+// No op
+exports.authorize = () => (req, res, next) => {
+  if (!req.user) {
+    return res
+      .status(401)
+      .json({ success: false, message: "Không được phép truy cập" });
+  }
+  next();
 };
 
-// Middleware to authorize password reset using a short-lived reset token
+// Reset token middleware
 exports.authorizePasswordReset = (req, res, next) => {
   try {
-    let token;
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    const token = extractToken(req);
     if (!token) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Reset token missing" });
+      return res.status(401).json({
+        success: false,
+        message: "Thiếu reset token",
+      });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     if (!decoded || !decoded.isPasswordReset) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid reset token" });
+      return res.status(401).json({
+        success: false,
+        message: "Reset token không hợp lệ",
+      });
     }
 
-    // Attach reset info for handler (email or id)
     req.resetUser = { id: decoded.id, email: decoded.email };
     next();
   } catch (err) {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired reset token",
+      message: "Reset token hết hạn hoặc không hợp lệ",
       error: err.message,
     });
   }
