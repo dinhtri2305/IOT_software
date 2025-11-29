@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
+const BlacklistedToken = require("../models/blackListedToken.model");
 
 // Protect routes - check if user is authenticated
 exports.protect = async (req, res, next) => {
@@ -19,6 +20,14 @@ exports.protect = async (req, res, next) => {
         success: false,
         message: "Not authorized, please login",
       });
+    }
+
+    // Check if token is blacklisted (logged out)
+    const found = await BlacklistedToken.findOne({ token });
+    if (found) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Token revoked, please login" });
     }
 
     // Verify token
@@ -42,10 +51,9 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
+    // Attach user to request (only necessary fields)
     req.user = {
       id: user._id,
-      username: user.username,
       email: user.email,
     };
 
@@ -82,22 +90,33 @@ exports.authorize = () => {
 exports.authorizePasswordReset = (req, res, next) => {
   try {
     let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
       token = req.headers.authorization.split(" ")[1];
     }
     if (!token) {
-      return res.status(401).json({ success: false, message: "Reset token missing" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Reset token missing" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded || !decoded.isPasswordReset) {
-      return res.status(401).json({ success: false, message: "Invalid reset token" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid reset token" });
     }
 
     // Attach reset info for handler (email or id)
     req.resetUser = { id: decoded.id, email: decoded.email };
     next();
   } catch (err) {
-    return res.status(401).json({ success: false, message: "Invalid or expired reset token", error: err.message });
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired reset token",
+      error: err.message,
+    });
   }
 };

@@ -1,27 +1,97 @@
 const User = require("../models/user.model");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const BlacklistedToken = require("../models/blacklistedToken.model");
+const BlacklistedToken = require("../models/blackListedToken.model");
+const PendingUser = require("../models/pendingUser.model");
+const sendEmail = require("../../utils/sendEmail");
 
-// Simple registration (no OTP)
+// Registration: create pending user and send OTP (email, password, confirmPassword)
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, password, confirmPassword } = req.body;
 
-    if (!name || !email || !password) {
+    if (!email || !password || !confirmPassword) {
       return res
         .status(400)
-        .json({ message: "Tên, email và mật khẩu là bắt buộc" });
+        .json({ message: "Email, password và confirmPassword là bắt buộc" });
     }
 
-    // Check if user exists
+    if (password !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ message: "Password và confirmPassword không khớp" });
+    }
+
+    // Check if a real user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email đã được đăng ký" });
     }
 
-    const user = new User({ name, email, password, isEmailVerified: true });
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Remove any previous pending entry for this email
+    await PendingUser.findOneAndDelete({ email });
+
+    // For simplicity we store the plain password temporarily. In production
+    // prefer hashing or using a verification token flow.
+    await PendingUser.create({ email, password, otp, otpExpiresAt });
+
+    // Try to send OTP by email; fall back to returning OTP in response for dev
+    try {
+      await sendEmail({
+        to: email,
+        subject: "Your registration OTP",
+        text: `OTP: ${otp}`,
+      });
+    } catch (e) {
+      // ignore send errors for now
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent to email (or returned in response for dev)",
+      otp,
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Verify registration OTP and create the real user
+exports.verifyRegistrationOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp)
+      return res.status(400).json({ message: "Email và otp là bắt buộc" });
+
+    const pending = await PendingUser.findOne({ email });
+    if (!pending)
+      return res
+        .status(400)
+        .json({ message: "No pending signup for this email" });
+
+    if (
+      pending.otp !== String(otp) ||
+      !pending.otpExpiresAt ||
+      pending.otpExpiresAt < new Date()
+    ) {
+      return res.status(400).json({ message: "OTP invalid or expired" });
+    }
+
+    // Create real user. No username/name fields — keep user minimal.
+    const user = new User({
+      email: pending.email,
+      password: pending.password,
+      isEmailVerified: true,
+    });
     await user.save();
+
+    // Remove pending
+    await PendingUser.deleteOne({ email });
 
     const token = jwt.sign(
       { id: user._id, email: user.email },
@@ -30,12 +100,12 @@ exports.register = async (req, res) => {
     );
 
     return res.status(201).json({
-      message: "Đăng ký thành công",
+      message: "Registration verified",
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user._id, email: user.email },
     });
   } catch (error) {
-    console.error("Register error:", error);
+    console.error("verifyRegistrationOTP error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -90,7 +160,6 @@ exports.login = async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.name,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
       },
@@ -104,11 +173,21 @@ exports.login = async (req, res) => {
 // logout user (giữ nguyên)
 exports.logout = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
+    // Accept token from Authorization header, body or query for flexibility
+    let token;
+    if (
+      req.headers &&
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+    if (!token && req.body && req.body.token) token = req.body.token;
+    if (!token && req.query && req.query.token) token = req.query.token;
+
+    if (!token) {
       return res.status(400).json({ message: "No token provided" });
     }
-    const token = authHeader.split(" ")[1];
 
     // Decode token to get expiration time
     const decoded = jwt.decode(token);

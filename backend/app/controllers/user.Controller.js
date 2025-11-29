@@ -167,7 +167,6 @@ exports.login = async (req, res, next) => {
       token,
       user: {
         id: user._id,
-        name: user.name,
         email: user.email,
       },
     });
@@ -246,7 +245,11 @@ exports.verifyOTP = async (req, res, next) => {
 
     // Tạo một token tạm thời để xác nhận OTP đã được kiểm tra
     const jwt = require("jsonwebtoken");
-    const resetToken = jwt.sign({ id: user._id, email: user.email, isPasswordReset: true }, process.env.JWT_SECRET, { expiresIn: "15m" });
+    const resetToken = jwt.sign(
+      { id: user._id, email: user.email, isPasswordReset: true },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
 
     res.status(200).json({
       success: true,
@@ -267,11 +270,13 @@ exports.resetPassword = async (req, res, next) => {
     const email = (req.resetUser && req.resetUser.email) || bodyEmail;
 
     if (!email) {
-      return res.status(400).json({ success: false, message: "Email is required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
     }
 
     // Tìm user với email
-    const user = await User.findOne({ email }).select('+resetPasswordOTP');
+    const user = await User.findOne({ email }).select("+resetPasswordOTP");
 
     if (!user) {
       return res.status(404).json({

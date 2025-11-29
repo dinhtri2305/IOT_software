@@ -29,10 +29,16 @@
 // routes/authRoutes.js
 const express = require("express");
 const router = express.Router();
-const { register, login, logout } = require("../controllers/auth.controller");
+const {
+  register,
+  login,
+  logout,
+  verifyRegistrationOTP,
+} = require("../controllers/auth.controller");
 
 // define endpoints
 router.post("/register", register);
+router.post("/verify-registration-otp", verifyRegistrationOTP);
 // Note: OTP-registration flow removed; no verify-registration-otp endpoint
 router.post("/login", login);
 router.post("/logout", logout);
