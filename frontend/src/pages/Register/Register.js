@@ -167,8 +167,7 @@ function Register() {
           const response = await axios.post("http://localhost:3000/api/auth/register", {
             name,
             email,
-            password,
-            role: "admin"
+            password
           });
           
           if (response.status === 200) {
@@ -221,7 +220,7 @@ function Register() {
           {step === 1 && (
             <>
               <form onSubmit={handleSubmit} className="auth-form">
-                <div className="auth-grid register-grid-two">
+                <div className="register-grid-two">
                   <div className="auth-field">
                     <label htmlFor="name" className="auth-label">
                       Họ và tên <span className="required">*</span>

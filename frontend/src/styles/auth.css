@@ -8,7 +8,7 @@ padding: 32px 16px;
 
 .auth-shell {
 width: 100%;
-max-width: 1050px;
+max-width: 1120px;
 border-radius: 32px;
 display: flex;
 position: relative;
@@ -90,12 +90,6 @@ flex-direction: column;
 height: 430px;
 }
 
-.auth-grid {
-display: grid;
-grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-gap: 0 24px;
-}
-
 .auth-otp-panel {
 display: flex;
 flex-direction: column;
@@ -107,7 +101,7 @@ height: 430px;
 display: flex;
 justify-content: center;
 gap: 13px;
-margin: 10px 0 24px;
+margin: 10px 0 10px;
 flex-wrap: wrap;
 }
 

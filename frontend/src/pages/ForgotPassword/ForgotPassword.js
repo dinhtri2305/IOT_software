@@ -66,7 +66,7 @@ function ForgotPassword() {
         if (validateOTP(newOtp)) {
           try {
             const response = await axios.post(
-              "http://localhost:3000/api/users/verify-otp",
+              "http://localhost:3000/api/user/verify-otp",
               {
                 email,
                 otp: newOtp.join(""),
@@ -96,10 +96,10 @@ function ForgotPassword() {
                   `Nhập sai OTP ${newAttempts} lần. Còn ${3 - newAttempts} lần nhập.`
                 );
               }
-            } else if (error.response?.status === 500) {
+            } else if (error.response.status === 500) {
               setMessage("Lỗi từ server");
             } else {
-              setMessage("Lỗi không xác định");
+              setMessage("Lỗi không xác định hoặc không thể kết nối đến server");
             }
 
             resetOTPForm();
@@ -149,7 +149,7 @@ function ForgotPassword() {
       if (step === 1) {
         try {
           const response = await axios.post(
-            "http://localhost:3000/api/users/forgot-password",
+            "http://localhost:3000/api/user/forgot-password",
             {
               email,
             }
@@ -163,9 +163,9 @@ function ForgotPassword() {
           }
         } catch (error) {
           setMessageType("error");
-          if (error.response?.status === 404) {
+          if (error.response.status === 404) {
             setMessage("Email không tồn tại");
-          } else if (error.response?.status === 500) {
+          } else if (error.response.status === 500) {
             setMessage("Lỗi từ server");
           } else {
             setMessage("Lỗi không xác định");
@@ -175,16 +175,12 @@ function ForgotPassword() {
         try {
           const resetToken = sessionStorage.getItem("resetToken");
           const response = await axios.post(
-            "http://localhost:3000/api/users/reset-password",
+            "http://localhost:3000/api/user/reset-password",
             {
               email,
               newPassword: newpassword,
+              resetToken: resetToken
             },
-            {
-              headers: {
-                Authorization: `Bearer ${resetToken}`,
-              },
-            }
           );
 
           if (response.status === 200) {
@@ -199,9 +195,9 @@ function ForgotPassword() {
           }
         } catch (error) {
           setMessageType("error");
-          if (error.response?.status === 404) {
+          if (error.response.status === 404) {
             setMessage("Không tìm thấy tài khoản với email này");
-          } else if (error.response?.status === 500) {
+          } else if (error.response.status === 500) {
             setMessage("Lỗi từ server");
           } else {
             setMessage("Lỗi kết nối server");
@@ -298,68 +294,66 @@ function ForgotPassword() {
 
           {step === 3 && (
             <form onSubmit={handleSubmit} className="auth-form">
-              <div className="auth-grid">
-                <div className="auth-field">
-                  <label htmlFor="new_password" className="auth-label">
-                    Mật khẩu mới <span className="required">*</span>
-                  </label>
-                  <div
-                    className={`auth-input ${
-                      errors.newpassword ? "has-error" : ""
-                    }`}
-                  >
-                    <span className="auth-icon">
-                      <img src="/assets/key.png" alt="Mật khẩu" loading="eager"/>
-                    </span>
-                    <input
-                      type="password"
-                      id="new_password"
-                      name="new_password"
-                      placeholder="Nhập mật khẩu mới"
-                      value={newpassword}
-                      onChange={(e) => {
-                        setNewpassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, newpassword: "" }));
-                      }}
-                    />
-                  </div>
-                  <span className="auth-error">
-                    {errors.newpassword || "\u00A0"}
+              <div className="auth-field">
+                <label htmlFor="new_password" className="auth-label">
+                  Mật khẩu mới <span className="required">*</span>
+                </label>
+                <div
+                  className={`auth-input ${
+                    errors.newpassword ? "has-error" : ""
+                  }`}
+                >
+                  <span className="auth-icon">
+                    <img src="/assets/key.png" alt="Mật khẩu" loading="eager"/>
                   </span>
+                  <input
+                    type="password"
+                    id="new_password"
+                    name="new_password"
+                    placeholder="Nhập mật khẩu mới"
+                    value={newpassword}
+                    onChange={(e) => {
+                      setNewpassword(e.target.value);
+                      setErrors((prev) => ({ ...prev, newpassword: "" }));
+                    }}
+                  />
                 </div>
+                <span className="auth-error">
+                  {errors.newpassword || "\u00A0"}
+                </span>
+              </div>
 
-                <div className="auth-field">
-                  <label htmlFor="confirm_new_password" className="auth-label">
-                    Xác nhận mật khẩu <span className="required">*</span>
-                  </label>
-                  <div
-                    className={`auth-input ${
-                      errors.renewpassword ? "has-error" : ""
-                    }`}
-                  >
-                    <span className="auth-icon">
-                      <img
-                        src="/assets/lock.png"
-                        alt="Xác nhận mật khẩu"
-                        loading="eager"
-                      />
-                    </span>
-                    <input
-                      type="password"
-                      id="confirm_new_password"
-                      name="confirm_new_password"
-                      placeholder="Nhập lại mật khẩu"
-                      value={renewpassword}
-                      onChange={(e) => {
-                        setRenewpassword(e.target.value);
-                        setErrors((prev) => ({ ...prev, renewpassword: "" }));
-                      }}
+              <div className="auth-field">
+                <label htmlFor="confirm_new_password" className="auth-label">
+                  Xác nhận mật khẩu <span className="required">*</span>
+                </label>
+                <div
+                  className={`auth-input ${
+                    errors.renewpassword ? "has-error" : ""
+                  }`}
+                >
+                  <span className="auth-icon">
+                    <img
+                      src="/assets/lock.png"
+                      alt="Xác nhận mật khẩu"
+                      loading="eager"
                     />
-                  </div>
-                  <span className="auth-error">
-                    {errors.renewpassword || "\u00A0"}
                   </span>
+                  <input
+                    type="password"
+                    id="confirm_new_password"
+                    name="confirm_new_password"
+                    placeholder="Nhập lại mật khẩu"
+                    value={renewpassword}
+                    onChange={(e) => {
+                      setRenewpassword(e.target.value);
+                      setErrors((prev) => ({ ...prev, renewpassword: "" }));
+                    }}
+                  />
                 </div>
+                <span className="auth-error">
+                  {errors.renewpassword || "\u00A0"}
+                </span>
               </div>
 
               <button type="submit" className="auth-primary-btn">
