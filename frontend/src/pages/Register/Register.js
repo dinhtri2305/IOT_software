@@ -70,7 +70,7 @@ function Register() {
         if (validateOTP(newOtp)) {
           // Complete registration
           try {
-            const registerResponse = await axios.post('http://localhost:5000/api/auth/verify-registration-otp', {
+            const registerResponse = await axios.post('http://localhost:3000/api/auth/verify-registration-otp', {
               email,
               otp: newOtp.join('')
             });
@@ -164,7 +164,7 @@ function Register() {
     if (validateForm()) {
       if (step === 1) {
         try {
-          const response = await axios.post("http://localhost:5000/api/auth/register", {
+          const response = await axios.post("http://localhost:3000/api/auth/register", {
             name,
             email,
             password,

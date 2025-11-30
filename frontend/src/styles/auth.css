@@ -191,7 +191,7 @@ background: #fff5f5;
 }
 
 .auth-error {
-color: #ff4d4d;
+color: #ff2865;
 font-size: 14px;
 margin: 4px 0 12px 4px;
 min-height: 18px;
@@ -200,6 +200,7 @@ min-height: 18px;
 .auth-error--center {
 text-align: center;
 font-size: 16px;
+margin-top: 10px;
 }
 
 .auth-error--success {

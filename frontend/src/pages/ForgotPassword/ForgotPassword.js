@@ -66,7 +66,7 @@ function ForgotPassword() {
         if (validateOTP(newOtp)) {
           try {
             const response = await axios.post(
-              "http://localhost:5000/api/users/verify-otp",
+              "http://localhost:3000/api/users/verify-otp",
               {
                 email,
                 otp: newOtp.join(""),
@@ -149,7 +149,7 @@ function ForgotPassword() {
       if (step === 1) {
         try {
           const response = await axios.post(
-            "http://localhost:5000/api/users/forgot-password",
+            "http://localhost:3000/api/users/forgot-password",
             {
               email,
             }
@@ -175,7 +175,7 @@ function ForgotPassword() {
         try {
           const resetToken = sessionStorage.getItem("resetToken");
           const response = await axios.post(
-            "http://localhost:5000/api/users/reset-password",
+            "http://localhost:3000/api/users/reset-password",
             {
               email,
               newPassword: newpassword,
