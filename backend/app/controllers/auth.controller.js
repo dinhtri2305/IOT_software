@@ -5,21 +5,15 @@ const BlacklistedToken = require("../models/blackListedToken.model");
 const PendingUser = require("../models/pendingUser.model");
 const sendEmail = require("../../utils/sendEmail");
 
-// Registration: create pending user and send OTP (email, password, confirmPassword)
+// Registration: create pending user and send OTP (name, email, password)
 exports.register = async (req, res) => {
   try {
-    const { email, password, confirmPassword } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!email || !password || !confirmPassword) {
+    if (!name || !email || !password) {
       return res
         .status(400)
-        .json({ message: "Email, password và confirmPassword là bắt buộc" });
-    }
-
-    if (password !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ message: "Password và confirmPassword không khớp" });
+        .json({ message: "Name, email và password là bắt buộc" });
     }
 
     // Check if a real user already exists
@@ -37,7 +31,7 @@ exports.register = async (req, res) => {
 
     // For simplicity we store the plain password temporarily. In production
     // prefer hashing or using a verification token flow.
-    await PendingUser.create({ email, password, otp, otpExpiresAt });
+    await PendingUser.create({ name, email, password, otp, otpExpiresAt });
 
     // Decide if we should run in dev mode and skip sending email entirely.
     // If FORCE_DEV_OTP=true or not in production, skip calling sendEmail to avoid SMTP errors.
@@ -119,8 +113,9 @@ exports.verifyRegistrationOTP = async (req, res) => {
       return res.status(400).json({ message: "OTP invalid or expired" });
     }
 
-    // Create real user. No username/name fields — keep user minimal.
+    // Create real user with name field
     const user = new User({
+      name: pending.name,
       email: pending.email,
       password: pending.password,
       isEmailVerified: true,
@@ -134,7 +129,7 @@ exports.verifyRegistrationOTP = async (req, res) => {
     // require explicit login to obtain an auth token.
     return res.status(201).json({
       message: "Registration verified. Please login to continue.",
-      user: { id: user._id, email: user.email },
+      user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (error) {
     console.error("verifyRegistrationOTP error:", error);
@@ -283,6 +278,7 @@ exports.login = async (req, res) => {
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
         isEmailVerified: user.isEmailVerified,
       },

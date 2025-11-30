@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const pendingUserSchema = new mongoose.Schema(
   {
+    name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true },
     // NOTE: For simplicity this stores the plain password temporarily until
     // the user verifies the OTP and the account is created. In production

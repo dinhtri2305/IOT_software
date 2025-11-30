@@ -251,6 +251,7 @@ exports.verifyOTP = async (req, res, next) => {
       { expiresIn: "15m" }
     );
 
+    // Trả về resetToken trong body
     res.status(200).json({
       success: true,
       message: "OTP hợp lệ",
@@ -262,20 +263,26 @@ exports.verifyOTP = async (req, res, next) => {
 };
 
 // Reset Password sau khi OTP đã được xác thực
+// Nhận email, newPassword và resetToken từ body (hoặc resetToken từ headers)
 exports.resetPassword = async (req, res, next) => {
   try {
-    const { email: bodyEmail, newPassword } = req.body;
+    const { email, newPassword, resetToken: bodyResetToken } = req.body;
 
-    // Prefer email from validated reset token (attached by authorizePasswordReset)
-    const email = (req.resetUser && req.resetUser.email) || bodyEmail;
-
-    if (!email) {
+    if (!email || !newPassword) {
       return res
         .status(400)
-        .json({ success: false, message: "Email is required" });
+        .json({ success: false, message: "Email và newPassword là bắt buộc" });
     }
 
-    // Tìm user với email
+    // Verify email từ body khớp với email trong resetToken
+    if (req.resetUser && req.resetUser.email !== email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email không khớp với reset token",
+      });
+    }
+
+    // Tìm user với email từ body
     const user = await User.findOne({ email }).select("+resetPasswordOTP");
 
     if (!user) {

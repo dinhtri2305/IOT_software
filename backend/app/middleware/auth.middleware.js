@@ -123,10 +123,12 @@ exports.authorize = () => (req, res, next) => {
   next();
 };
 
-// Reset token middleware
+// Reset token middleware - đọc resetToken từ body hoặc header "resetToken"
 exports.authorizePasswordReset = (req, res, next) => {
   try {
-    const token = extractToken(req);
+    // Đọc resetToken từ body hoặc header (ưu tiên body)
+    const token = req.body.resetToken || req.headers.resettoken || req.headers["reset-token"];
+
     if (!token) {
       return res.status(401).json({
         success: false,
