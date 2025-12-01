@@ -81,10 +81,10 @@ exports.register = async (req, res) => {
       console.log(`Registration OTP for ${email}: ${otp}`);
     }
 
+    // Do not include OTP in API responses (avoid leaking verification codes).
     return res.status(200).json({
       success: true,
-      message: "OTP generated for registration",
-      ...(isDev ? { otp } : {}),
+      message: "OTP generated for registration. Please check your email.",
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -243,17 +243,31 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Enforce single-session: if user already has an active currentAuthToken, block login
+    // If user already has an active currentAuthToken, blacklist it and allow login.
+    // This keeps single-session semantics (only one valid token stored) while
+    // letting the user re-login without an explicit prior logout.
     if (user.currentAuthToken) {
       try {
-        jwt.verify(user.currentAuthToken, process.env.JWT_SECRET);
-        // If verification succeeds, token is still valid — require logout first
-        return res.status(400).json({
-          message:
-            "User already logged in. Logout first to create a new session.",
-        });
+        const prevToken = user.currentAuthToken;
+        // Decode previous token to get expiration (don't throw on invalid)
+        const decodedPrev = jwt.decode(prevToken);
+        if (decodedPrev && decodedPrev.exp) {
+          const expiresAt = new Date(decodedPrev.exp * 1000);
+          try {
+            await BlacklistedToken.updateOne(
+              { token: prevToken },
+              { $setOnInsert: { token: prevToken, expiresAt } },
+              { upsert: true }
+            );
+          } catch (e) {
+            console.warn(
+              "login: failed to blacklist previous token:",
+              e.message
+            );
+          }
+        }
       } catch (e) {
-        // old token invalid/expired — allow login
+        // ignore any errors while attempting to blacklist previous token
       }
     }
 

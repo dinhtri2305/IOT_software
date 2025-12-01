@@ -200,10 +200,11 @@ exports.forgotPassword = async (req, res, next) => {
     // Development: log OTP and return it in response for simulation (no SMTP)
     console.log(`OTP for ${user.email}: ${otp}`);
 
+    // Do not return the OTP in the HTTP response to avoid leaking secrets.
+    // Still log it on the server in development for debugging.
     res.status(200).json({
       success: true,
-      message: "OTP đã được tạo (development mode)",
-      otp,
+      message: "OTP đã được tạo. Vui lòng kiểm tra email của bạn.",
     });
   } catch (error) {
     // Only try to reset OTP fields if user was found
