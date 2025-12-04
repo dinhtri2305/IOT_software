@@ -3,15 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext();
 
-const EXPIRED_TIME = 12 * 60 * 60 * 1000; // 12 tiếng, tính bằng milliseconds
 const AUTH_STORAGE_KEYS = ["token", "userInfo", "tokenTime"];
-
-// Hàm kiểm tra token có quá hạn hay không
-const isTokenExpired = () => {
-  const tokenTime = localStorage.getItem("tokenTime");
-  if (!tokenTime) return true;
-  return Date.now() - parseInt(tokenTime) > EXPIRED_TIME;
-};
 
 const clearAuthData = (storage) => {
   AUTH_STORAGE_KEYS.forEach((key) => storage.removeItem(key));
@@ -23,18 +15,13 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const sources = [
-      { storage: localStorage, requireExpiryCheck: true },
-      { storage: sessionStorage, requireExpiryCheck: false },
+      { storage: localStorage },
+      { storage: sessionStorage },
     ];
 
-    for (const { storage, requireExpiryCheck } of sources) {
+    for (const { storage } of sources) {
       const token = storage.getItem("token");
       if (!token) continue;
-
-      if (requireExpiryCheck && isTokenExpired()) {
-        clearAuthData(storage);
-        continue;
-      }
 
       const savedUserInfo = storage.getItem("userInfo");
       if (savedUserInfo) {

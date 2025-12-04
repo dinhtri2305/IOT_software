@@ -1,0 +1,246 @@
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
+/* Sidebar trái */
+.sidebar {
+  width: 230px;
+  background: #2f3e46;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 18px;
+}
+
+.sidebar-logo {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sidebar-title {
+  color: #ffffff;
+  font-family: "Newsreader";
+  font-size: 24px;
+  font-weight: 450;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-item {
+  width: 100%;
+  border: 2px solid #333;
+  background: #e3ebee;
+  color: #333;
+  padding: 18px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.nav-item--active {
+  background: #ff6b4a;
+}
+
+.nav-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nav-label {
+  font-family: "Inter";
+  font-size: 14px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 14px 18px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  background: #23252b;
+}
+
+/* Khu vực bên phải */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #c8daf6;
+}
+
+/* Top bar */
+.topbar {
+  height: 72px;
+  background: #3b4b5f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  color: #f5f5f5;
+}
+
+.topbar-left .topbar-page-title {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 16px;
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.assistant-chip {
+  border-radius: 999px;
+  border: none;
+  padding: 12px 42px;
+  background: #ff6b35;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+.assistant-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.assistant-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.topbar-flag {
+  width: 32px;
+  height: 22px;
+  border-radius: 2px;
+  background: #e53935;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #ffd600;
+}
+
+.topbar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #111827;
+  background: #d5e6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.topbar-avatar img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  min-width: 220px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+  padding: 12px 14px;
+  z-index: 10;
+}
+
+.user-info h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.user-info p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: #4b5563;
+}
+
+.logout-button {
+  margin-top: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.logout-button:hover {
+  background: #dc2626;
+}
+
+/* Nội dung placeholder */
+.content {
+  flex: 1;
+  padding: 24px;
+}
+
+.content-placeholder {
+  height: 100%;
+  border-radius: 16px;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #42526e;
+  font-size: 14px;
+}
+
+

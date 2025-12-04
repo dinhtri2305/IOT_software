@@ -19,7 +19,7 @@ function Login() {
     const token =
       localStorage.getItem("token") || sessionStorage.getItem("token");
     if (token) {
-      navigate("/HomePage");
+      navigate("/homepage");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -64,14 +64,13 @@ function Login() {
             // Nếu remember -> lưu vào localStorage
             localStorage.setItem("token", response.data.token);
             localStorage.setItem("userInfo", JSON.stringify(response.data.user));
-            localStorage.setItem("tokenTime", Date.now().toString()); // Lưu thời gian đăng nhập
           } else {
             // Nếu không remember -> lưu vào sessionStorage
             sessionStorage.setItem("token", response.data.token);
             sessionStorage.setItem("userInfo", JSON.stringify(response.data.user));
           }
-          
-          navigate("/HomePage");
+
+          navigate("/homepage");
         }
       } catch (error) {
         if (error.response?.status === 400) {
