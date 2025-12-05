@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const AuthContext = createContext();
 
@@ -35,12 +36,34 @@ export const AuthProvider = ({ children }) => {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  const logout = () => {
-    clearAuthData(localStorage);
-    clearAuthData(sessionStorage);
-    setUserInfo(null);
-    navigate("/login", { replace: true });
-  };
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const response = await axios.post("http://localhost:3000/api/auth/logout", {
+        token,
+      });
+  
+      if (response.status === 200) {
+        // Xóa dữ liệu lưu trữ
+        clearAuthData(localStorage);
+        clearAuthData(sessionStorage);
+  
+        // Reset state
+        setUserInfo(null);
+  
+        // Điều hướng về trang login
+        navigate("/login", { replace: true });
+      }
+    } catch (error) {
+        if (error.response?.status === 400) {
+          alert("Đăng xuất không thành công");
+        } else if (error.response?.status === 500) {
+          alert("Lỗi từ server");
+        } else {
+          alert("Lỗi không xác định");
+        }
+      }
+    };  
 
   return (
     <AuthContext.Provider value={{ userInfo, setUserInfo, logout }}>

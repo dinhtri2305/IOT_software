@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuth } from "../../utils/AuthContext";
 import "./Homepage.css";
 
-const HomePage = () => {
+const Homepage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // tổng quan mặc định
   const { userInfo, logout } = useAuth();
@@ -75,32 +75,31 @@ const HomePage = () => {
         {/* Thanh top bar */}
         <header className="topbar">
           <div className="topbar-left">
-            <span className="topbar-page-title">HomePage</span>
-          </div>
-          <div className="topbar-center">
-            <button className="assistant-chip">
+            <button 
+              className="assistant-chip"
+              >
               <span className="assistant-icon">
-                <img src="/assets/robot-assistant.png" alt="Assistant" />
+                <img src="/assets/robot-assistant.png" alt="Hỗ trợ" />
               </span>
               <span>TRỢ LÝ ẢO GEMINI</span>
             </button>
           </div>
           <div className="topbar-right">
-            <button className="topbar-flag">VN</button>
+            <img src="/assets/flag.png" alt="Ngôn ngữ" className="topbar-flag"/>
             <div className="user-menu">
               <button
                 className="topbar-avatar"
                 onClick={() => setIsDropdownOpen((v) => !v)}
               >
-                <img src="/assets/id-card.png" alt="Tài khoản" />
+                <img src="/assets/user.png" alt="Tài khoản" />
               </button>
               {isDropdownOpen && (
                 <div className="user-dropdown">
                   <div className="user-info">
-                    <h3>Thông tin người dùng</h3>
+                    <h3>THÔNG TIN NGƯỜI DÙNG</h3>
                     <p>Họ tên: {userInfo?.name || "—"}</p>
                     <p>Email: {userInfo?.email || "—"}</p>
-                    <p>Vai trò: {userInfo?.role || "—"}</p>
+                    <p>Vai trò: admin</p>
                   </div>
                   <button className="logout-button" onClick={logout}>
                     Đăng xuất
@@ -152,4 +151,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+export default Homepage;

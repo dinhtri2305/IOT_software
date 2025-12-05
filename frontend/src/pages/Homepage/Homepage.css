@@ -6,7 +6,7 @@
 
 /* Sidebar trái */
 .sidebar {
-  width: 230px;
+  width: 250px;
   background: #2f3e46;
   display: flex;
   flex-direction: column;
@@ -20,8 +20,8 @@
 }
 
 .sidebar-logo {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -36,16 +36,22 @@
 .sidebar-title {
   color: #ffffff;
   font-family: "Newsreader";
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 450;
+  margin-top: 5px;
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
+  align-items: center;   /* căn giữa các nút theo trục ngang */
+  justify-content: center; /* nếu muốn căn giữa theo trục dọc trong phần nav */
+  flex-grow: 0.55;          /* chiếm khoảng trống giữa header và footer */
 }
 
 .nav-item {
+  height: 80px;
+  margin-top: 50px;
   width: 100%;
   border: 2px solid #333;
   background: #e3ebee;
@@ -53,20 +59,22 @@
   padding: 18px 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 25px;
   cursor: pointer;
 }
 
 .nav-item--active {
   background: #ff6b4a;
+  box-shadow: inset 10px 12px 6px rgba(0, 0, 0, 0.25);
 }
 
 .nav-icon {
-  width: 32px;
-  height: 32px;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: 10px;
 }
 
 .nav-icon img {
@@ -77,13 +85,14 @@
 
 .nav-label {
   font-family: "Inter";
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .sidebar-footer {
   margin-top: auto;
   padding: 14px 18px;
-  font-size: 11px;
+  font-size: 14px;
+  text-align: center;
   color: rgba(255, 255, 255, 0.6);
   background: #23252b;
 }
@@ -98,8 +107,8 @@
 
 /* Top bar */
 .topbar {
-  height: 72px;
-  background: #3b4b5f;
+  height: 82px;
+  background: #3e5968;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -107,34 +116,28 @@
   color: #f5f5f5;
 }
 
-.topbar-left .topbar-page-title {
+.topbar-left {
   font-family: "Inter", system-ui, sans-serif;
   font-size: 16px;
-}
-
-.topbar-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
 }
 
 .assistant-chip {
   border-radius: 999px;
   border: none;
-  padding: 12px 42px;
-  background: #ff6b35;
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
+  padding: 8px 30px;
+  background: #ff6b4a;
+  color: #333;
+  font-size: 16px;
+  font-family: "Inter", sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 4px 10px 8px rgba(0, 0, 0, 0.25);
 }
 
 .assistant-icon {
-  width: 32px;
-  height: 32px;
+  width: 45px;
+  height: 45px;
 }
 
 .assistant-icon img {
@@ -150,23 +153,21 @@
 }
 
 .topbar-flag {
-  width: 32px;
-  height: 22px;
-  border-radius: 2px;
-  background: #e53935;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #ffd600;
+  width: 60px;
+  height: auto;
+  margin-right: 5px;
+}
+
+.user-menu {
+  position: relative;
 }
 
 .topbar-avatar {
-  width: 36px;
-  height: 36px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  border: 2px solid #111827;
-  background: #d5e6ff;
+  background-color: #d5e6ff;
+  border: 2px solid #d5e6ff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -174,49 +175,50 @@
 }
 
 .topbar-avatar img {
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-}
-
-.user-menu {
-  position: relative;
+  width: 95%;
+  height: 95%;
+  object-fit: cover;
 }
 
 .user-dropdown {
   position: absolute;
-  top: 44px;
+  top: 70px;
   right: 0;
-  min-width: 220px;
-  background: #ffffff;
+  min-width: 350px;
+  background: #fafaf5;
+  border: 2px solid #e6e6e6;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
-  padding: 12px 14px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   z-index: 10;
 }
 
 .user-info h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
+  color: #333;
+  font-size: 18px;
+  margin-bottom: 15px;
+  font-family: "Inter", sans-serif;
+  text-align: center;
 }
 
 .user-info p {
-  margin: 2px 0;
-  font-size: 12px;
-  color: #4b5563;
+  color: #666;
+  font-size: 16px;
+  margin-top: 10px;
+  font-family: "Inter", sans-serif;
 }
 
 .logout-button {
-  margin-top: 10px;
+  margin-top: 20px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 10px;
   border-radius: 6px;
   border: none;
-  background: #ef4444;
+  background: #f13a3a;
   color: #fff;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
   cursor: pointer;
+  font-family: "Inter", sans-serif;
 }
 
 .logout-button:hover {
