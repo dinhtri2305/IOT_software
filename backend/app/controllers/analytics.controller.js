@@ -22,8 +22,16 @@ class LinearRegression {
     }
 
     // Calculate slope and intercept
-    this.slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    this.intercept = (sumY - this.slope * sumX) / n;
+    const denominator = n * sumX2 - sumX * sumX;
+
+    // Handle edge cases (no variation in X or only 1 data point)
+    if (denominator === 0 || n <= 1) {
+      this.slope = 0;
+      this.intercept = sumY / n; // Use mean of y values
+    } else {
+      this.slope = (n * sumXY - sumX * sumY) / denominator;
+      this.intercept = (sumY - this.slope * sumX) / n;
+    }
 
     return this;
   }
@@ -40,7 +48,7 @@ class LinearRegression {
 // Get temperature vs humidity correlation
 exports.getTempHumidityCorrelation = async (req, res) => {
   try {
-    const hours = parseInt(req.query.hours) || 168; // Default 7 days
+    const hours = parseInt(req.query.hours) || 32; // Default 32 hours
     const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
 
     const data = await SensorData.find({
@@ -53,9 +61,15 @@ exports.getTempHumidityCorrelation = async (req, res) => {
     // Calculate correlation coefficient
     const n = data.length;
     if (n < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Not enough data for correlation analysis",
+      return res.json({
+        success: true,
+        correlation: 0,
+        dataPoints: [],
+        summary: {
+          avgTemperature: 0,
+          avgHumidity: 0,
+          totalRecords: 0,
+        },
       });
     }
 
@@ -105,7 +119,7 @@ exports.getTempHumidityCorrelation = async (req, res) => {
 // Get gas level distribution
 exports.getGasDistribution = async (req, res) => {
   try {
-    const hours = parseInt(req.query.hours) || 168; // 7 days
+    const hours = parseInt(req.query.hours) || 32; // 32 hours
     const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
 
     const distribution = await SensorData.aggregate([
@@ -193,10 +207,12 @@ exports.predictNextDay = async (req, res) => {
       { $sort: { timestamp: 1 } },
     ]);
 
-    if (data.length < 24) {
-      return res.status(400).json({
-        success: false,
-        message: "Not enough data for prediction (need at least 24 hours)",
+    if (data.length < 1) {
+      return res.json({
+        success: true,
+        predictions: [],
+        trainingHours: data.length,
+        message: "Not enough data for prediction (need at least 1 data point)",
       });
     }
 
@@ -219,8 +235,17 @@ exports.predictNextDay = async (req, res) => {
 
     for (let i = 0; i < 24; i++) {
       const nextIndex = currentHour + i;
-      const predictedTemp = tempModel.predict(nextIndex);
-      const predictedHumid = humidModel.predict(nextIndex);
+      let predictedTemp = tempModel.predict(nextIndex);
+      let predictedHumid = humidModel.predict(nextIndex);
+
+      // Handle case where all data is the same (no variation)
+      // If slope is 0 or very close to 0, use the last known value
+      if (Math.abs(tempModel.slope) < 0.0001) {
+        predictedTemp = yTemp[yTemp.length - 1];
+      }
+      if (Math.abs(humidModel.slope) < 0.0001) {
+        predictedHumid = yHumid[yHumid.length - 1];
+      }
 
       const nextTimestamp = new Date(
         lastTimestamp.getTime() + (i + 1) * 60 * 60 * 1000
