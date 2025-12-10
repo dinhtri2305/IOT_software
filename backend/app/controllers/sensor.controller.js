@@ -67,7 +67,7 @@ exports.getLatest = async (req, res) => {
     const deviceId = req.query.deviceId;
     const limit = Number(req.query.limit) || 10;
     const data = await SensorData.find(deviceId ? { deviceId } : {})
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: -1, createdAt: -1 })
       .limit(limit)
       .lean();
     res.json({ success: true, data });
