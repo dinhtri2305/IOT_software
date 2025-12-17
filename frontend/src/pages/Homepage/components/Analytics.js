@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  LineChart,
-  Line,
+  ScatterChart,
+  Scatter,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,10 +27,13 @@ const Analytics = ({ authToken }) => {
     try {
       setLoading(true);
       setError("");
+      setTempHumidityData([]);
+      setPredictedTemp([]);
+      setPredictedHumidity([]);
 
-      // Fetch temperature-humidity correlation (last 5 data points)
+      // Fetch temperature-humidity correlation (10 newest points)
       const tempHumidResponse = await axios.get(
-        "http://localhost:3000/api/analytics/temp-humidity-correlation?hours=32",
+        "http://localhost:3000/api/analytics/temp-humidity-correlation?limit=10",
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -38,19 +41,26 @@ const Analytics = ({ authToken }) => {
 
       if (tempHumidResponse.data.success) {
         const dataPoints = tempHumidResponse.data.dataPoints || [];
-        const last5 = dataPoints.slice(-5);
         setTempHumidityData(
-          last5.map((d, idx) => ({
-            time: `${idx + 1}h`,
-            temperature: Math.round(d.temperature * 10) / 10,
+          dataPoints.map((d, idx) => ({
+            id: idx + 1,
             humidity: Math.round(d.humidity * 10) / 10,
+            temperature: Math.round(d.temperature * 10) / 10,
+            label:
+              d.timestamp &&
+              new Date(d.timestamp).toLocaleString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+                day: "2-digit",
+                month: "2-digit",
+              }),
           }))
         );
       }
 
       // Fetch temperature and humidity predictions
       const predictionResponse = await axios.get(
-        "http://localhost:3000/api/analytics/predict-next-day",
+        "http://localhost:3000/api/analytics/predict-next-day?days=3",
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -70,6 +80,9 @@ const Analytics = ({ authToken }) => {
             value: Math.round(p.predictedHumidity * 10) / 10,
           }))
         );
+      } else {
+        setPredictedTemp([]);
+        setPredictedHumidity([]);
       }
     } catch (err) {
       console.error("Error fetching analytics data:", err);
@@ -96,45 +109,52 @@ const Analytics = ({ authToken }) => {
               BIỂU ĐỒ PHÂN BỐ NHIỆT ĐỘ THEO ĐỘ ẨM
             </div>
             <div className="analytics-chart-box temp-humidity-chart">
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={tempHumidityData}
-                  margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis dataKey="time" stroke="#666" />
-                  <YAxis yAxisId="left" stroke="#ff7a00" />
-                  <YAxis yAxisId="right" orientation="right" stroke="#4a90e2" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #ccc",
-                      borderRadius: "4px",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="temperature"
-                    stroke="#ff7a00"
-                    name="Nhiệt độ (°C)"
-                    strokeWidth={2.5}
-                    dot={{ fill: "#ff7a00", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="humidity"
-                    stroke="#4a90e2"
-                    name="Độ ẩm (%)"
-                    strokeWidth={2.5}
-                    dot={{ fill: "#4a90e2", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {tempHumidityData.length === 0 ? (
+                <div className="analytics-empty">Chưa có dữ liệu</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={400}>
+                  <ScatterChart
+                    margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis
+                      dataKey="humidity"
+                      name="Độ ẩm (%)"
+                      type="number"
+                      stroke="#4a90e2"
+                      domain={["dataMin - 5", "dataMax + 5"]}
+                    />
+                    <YAxis
+                      dataKey="temperature"
+                      name="Nhiệt độ (°C)"
+                      type="number"
+                      stroke="#ff7a00"
+                      domain={["dataMin - 5", "dataMax + 5"]}
+                    />
+                    <Tooltip
+                      cursor={{ strokeDasharray: "3 3" }}
+                      formatter={(value, name) =>
+                        name === "temperature"
+                          ? [`${value}°C`, "Nhiệt độ"]
+                          : [`${value}%`, "Độ ẩm"]
+                      }
+                      labelFormatter={(label, payload) => {
+                        const point = payload && payload[0] && payload[0].payload;
+                        return point?.label
+                          ? `Thời gian: ${point.label}`
+                          : "Điểm đo";
+                      }}
+                    />
+                    <Legend />
+                    <Scatter
+                      name="Điểm đo"
+                      data={tempHumidityData}
+                      fill="#ff7a00"
+                      shape="circle"
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 

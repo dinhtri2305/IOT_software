@@ -116,7 +116,15 @@ class MQTTHandler {
         deviceId: data.deviceId || "unknown",
         temperature: data.temperature ?? null,
         humidity: data.humidity ?? null,
-        gasLevel: data.gasLevel ?? null,
+        // accept gasLevel or gasVoltage (fallback)
+        gasLevel:
+          data.gasLevel !== undefined
+            ? data.gasLevel
+            : data.gasVoltage !== undefined
+            ? data.gasVoltage
+            : null,
+        ldrValue: data.ldrValue ?? null,
+        lightLed: data.lightLed || null,
         fireDetected: Boolean(data.fireDetected),
         location: data.location || "Unknown",
         timestamp,

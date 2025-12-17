@@ -48,15 +48,28 @@ class LinearRegression {
 // Get temperature vs humidity correlation
 exports.getTempHumidityCorrelation = async (req, res) => {
   try {
-    const hours = parseInt(req.query.hours) || 32; // Default 32 hours
-    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+    // Prefer explicit limit (latest N records). Fallback to hours window.
+    const limit = parseInt(req.query.limit, 10);
+    const hours = parseInt(req.query.hours, 10) || 32; // Default 32 hours
+    let data = [];
 
-    const data = await SensorData.find({
-      timestamp: { $gte: startTime },
-    })
-      .select("temperature humidity timestamp")
-      .sort({ timestamp: 1 })
-      .lean();
+    if (!Number.isNaN(limit) && limit > 0) {
+      // Get latest {limit} records, then reverse to chronological order
+      data = await SensorData.find({})
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .lean();
+      data = data.reverse();
+    } else {
+      const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+      data = await SensorData.find({
+        timestamp: { $gte: startTime },
+      })
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: 1 })
+        .lean();
+    }
 
     // Calculate correlation coefficient
     const n = data.length;
@@ -188,7 +201,7 @@ exports.predictNextDay = async (req, res) => {
     const startTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Get hourly average data
-    const data = await SensorData.aggregate([
+    let data = await SensorData.aggregate([
       { $match: { timestamp: { $gte: startTime } } },
       {
         $group: {
@@ -207,13 +220,32 @@ exports.predictNextDay = async (req, res) => {
       { $sort: { timestamp: 1 } },
     ]);
 
+    // Fallback: if hourly aggregation has no data, use latest 10 raw points
     if (data.length < 1) {
-      return res.json({
-        success: true,
-        predictions: [],
-        trainingHours: data.length,
-        message: "Not enough data for prediction (need at least 1 data point)",
-      });
+      const fallback = await SensorData.find({})
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean();
+
+      if (fallback.length < 1) {
+        return res.json({
+          success: true,
+          predictions: [],
+          trainingHours: 0,
+          message: "Not enough data for prediction (need at least 1 data point)",
+        });
+      }
+
+      // Map raw points into the same shape as aggregated data
+      data = fallback
+        .reverse()
+        .map((d, idx) => ({
+          _id: `raw-${idx}`,
+          avgTemp: d.temperature,
+          avgHumid: d.humidity,
+          timestamp: d.timestamp,
+        }));
     }
 
     // Prepare data for linear regression
