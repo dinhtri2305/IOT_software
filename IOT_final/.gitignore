@@ -1,0 +1,19 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+*.o
+*.elf
+*.bin
+*.hex
+
+# Logs
+*.log
