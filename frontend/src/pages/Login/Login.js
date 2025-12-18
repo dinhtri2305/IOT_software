@@ -164,7 +164,7 @@ function Login() {
                 />
                 Ghi nhớ đăng nhập
               </label>
-              <Link to="/forgot_password" className="auth-link">
+              <Link to="/forgot-password" className="auth-link">
                 Quên mật khẩu?
               </Link>
             </div>

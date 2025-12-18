@@ -16,6 +16,7 @@ const sensorRoutes = require("./app/routes/sensor.routes");
 const deviceRoutes = require("./app/routes/device.routes");
 const analyticsRoutes = require("./app/routes/analytics.routes"); // ✅ BỎ COMMENT
 const userRoutes = require("./app/routes/user.routes");
+const chatbotRoutes = require("./app/routes/chatbot.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,7 @@ app.get("/", (req, res) => {
       device: "/api/device",
       analytics: "/api/analytics", // ✅ THÊM
       user: "/api/user",
+      chatbot: "/api/chatbot",
       health: "/api/health",
     },
   });
@@ -89,6 +91,7 @@ app.use("/api/sensor", sensorRoutes);
 app.use("/api/device", deviceRoutes);
 app.use("/api/analytics", analyticsRoutes); // ✅ BỎ COMMENT
 app.use("/api/user", userRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 
 // ========================================
 // ERROR HANDLING
@@ -106,6 +109,7 @@ app.use("*", (req, res) => {
       "/api/device",
       "/api/analytics", // ✅ THÊM
       "/api/user",
+      "/api/chatbot",
     ],
   });
 });
@@ -136,6 +140,7 @@ const server = app.listen(PORT, () => {
   console.log("   - GET  /api/sensor/current");
   console.log("   - POST /api/device/led");
   console.log("   - GET  /api/analytics/predict-next-day");
+  console.log("   - POST /api/chatbot/ask");
   console.log("========================================");
 });
 

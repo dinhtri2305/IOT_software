@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useAuth } from "../../utils/AuthContext";
+import ChatbotComponent from "./components/Chatbot";
 import "./Homepage.css";
 
 const Homepage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // tổng quan mặc định
   const { userInfo, logout } = useAuth();
 
@@ -77,11 +79,12 @@ const Homepage = () => {
           <div className="topbar-left">
             <button 
               className="assistant-chip"
-              >
+              onClick={() => setIsChatbotOpen(true)}
+            >
               <span className="assistant-icon">
                 <img src="/assets/robot-assistant.png" alt="Hỗ trợ" />
               </span>
-              <span>TRỢ LÝ ẢO GEMINI</span>
+              <span>TRỢ LÝ ẢO GROQ</span>
             </button>
           </div>
           <div className="topbar-right">
@@ -147,6 +150,12 @@ const Homepage = () => {
           )}
         </main>
       </div>
+
+      {/* Chatbot Component */}
+      <ChatbotComponent 
+        isOpen={isChatbotOpen} 
+        onClose={() => setIsChatbotOpen(false)} 
+      />
     </div>
   );
 };
