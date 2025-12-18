@@ -49,7 +49,7 @@
   flex-direction: column;
   align-items: center;   /* căn giữa các nút theo trục ngang */
   justify-content: center; /* nếu muốn căn giữa theo trục dọc trong phần nav */
-  flex-grow: 0.7;          /* chiếm khoảng trống giữa header và footer */
+  flex-grow: 0.6;          /* chiếm khoảng trống giữa header và footer */
 }
 
 .nav-item {
