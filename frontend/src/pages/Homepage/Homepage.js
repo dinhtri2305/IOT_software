@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useAuth } from "../../utils/AuthContext";
-<<<<<<< HEAD
+
 import ChatbotComponent from "./components/Chatbot";
-=======
+
 import Overview from "./components/Overview";
 import Analytics from "./components/Analytics";
 import Archive from "./components/Archive";
 import Settings from "./components/Settings";
->>>>>>> 33a6f7a383e85668fb98600a733fcb7767e7dad5
+
 import "./Homepage.css";
 
 const Homepage = () => {
@@ -84,14 +84,10 @@ const Homepage = () => {
         {/* Thanh top bar */}
         <header className="topbar">
           <div className="topbar-left">
-<<<<<<< HEAD
             <button 
               className="assistant-chip"
               onClick={() => setIsChatbotOpen(true)}
             >
-=======
-            <button className="assistant-chip">
->>>>>>> 33a6f7a383e85668fb98600a733fcb7767e7dad5
               <span className="assistant-icon">
                 <img src="/assets/robot-assistant.png" alt="Hỗ trợ" />
               </span>
