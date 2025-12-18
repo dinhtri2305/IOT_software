@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../../styles/global.css";
-import "../../styles/auth.css"
+import "../../styles/auth.css";
 import "./Login.css";
 
 function Login() {
@@ -52,7 +52,8 @@ function Login() {
 
     if (validateForm()) {
       try {
-        const response = await axios.post("http://localhost:3000/api/auth/login",
+        const response = await axios.post(
+          "http://localhost:3000/api/auth/login",
           {
             email,
             password,
@@ -63,11 +64,17 @@ function Login() {
           if (remember) {
             // Nếu remember -> lưu vào localStorage
             localStorage.setItem("token", response.data.token);
-            localStorage.setItem("userInfo", JSON.stringify(response.data.user));
+            localStorage.setItem(
+              "userInfo",
+              JSON.stringify(response.data.user)
+            );
           } else {
             // Nếu không remember -> lưu vào sessionStorage
             sessionStorage.setItem("token", response.data.token);
-            sessionStorage.setItem("userInfo", JSON.stringify(response.data.user));
+            sessionStorage.setItem(
+              "userInfo",
+              JSON.stringify(response.data.user)
+            );
           }
 
           navigate("/homepage");
@@ -176,7 +183,7 @@ function Login() {
               {message || "\u00A0"}
             </span>
           </form>
-          
+
           <div className="auth-switch">
             <span>Chưa có tài khoản?</span>
             <Link to="/register" className="auth-link auth-link--accent">

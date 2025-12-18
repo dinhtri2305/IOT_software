@@ -22,8 +22,16 @@ class LinearRegression {
     }
 
     // Calculate slope and intercept
-    this.slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    this.intercept = (sumY - this.slope * sumX) / n;
+    const denominator = n * sumX2 - sumX * sumX;
+
+    // Handle edge cases (no variation in X or only 1 data point)
+    if (denominator === 0 || n <= 1) {
+      this.slope = 0;
+      this.intercept = sumY / n; // Use mean of y values
+    } else {
+      this.slope = (n * sumXY - sumX * sumY) / denominator;
+      this.intercept = (sumY - this.slope * sumX) / n;
+    }
 
     return this;
   }
@@ -40,22 +48,41 @@ class LinearRegression {
 // Get temperature vs humidity correlation
 exports.getTempHumidityCorrelation = async (req, res) => {
   try {
-    const hours = parseInt(req.query.hours) || 168; // Default 7 days
-    const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+    // Prefer explicit limit (latest N records). Fallback to hours window.
+    const limit = parseInt(req.query.limit, 10);
+    const hours = parseInt(req.query.hours, 10) || 32; // Default 32 hours
+    let data = [];
 
-    const data = await SensorData.find({
-      timestamp: { $gte: startTime },
-    })
-      .select("temperature humidity timestamp")
-      .sort({ timestamp: 1 })
-      .lean();
+    if (!Number.isNaN(limit) && limit > 0) {
+      // Get latest {limit} records, then reverse to chronological order
+      data = await SensorData.find({})
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .lean();
+      data = data.reverse();
+    } else {
+      const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
+      data = await SensorData.find({
+        timestamp: { $gte: startTime },
+      })
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: 1 })
+        .lean();
+    }
 
     // Calculate correlation coefficient
     const n = data.length;
     if (n < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Not enough data for correlation analysis",
+      return res.json({
+        success: true,
+        correlation: 0,
+        dataPoints: [],
+        summary: {
+          avgTemperature: 0,
+          avgHumidity: 0,
+          totalRecords: 0,
+        },
       });
     }
 
@@ -105,7 +132,7 @@ exports.getTempHumidityCorrelation = async (req, res) => {
 // Get gas level distribution
 exports.getGasDistribution = async (req, res) => {
   try {
-    const hours = parseInt(req.query.hours) || 168; // 7 days
+    const hours = parseInt(req.query.hours) || 32; // 32 hours
     const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
 
     const distribution = await SensorData.aggregate([
@@ -174,7 +201,7 @@ exports.predictNextDay = async (req, res) => {
     const startTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Get hourly average data
-    const data = await SensorData.aggregate([
+    let data = await SensorData.aggregate([
       { $match: { timestamp: { $gte: startTime } } },
       {
         $group: {
@@ -193,11 +220,32 @@ exports.predictNextDay = async (req, res) => {
       { $sort: { timestamp: 1 } },
     ]);
 
-    if (data.length < 24) {
-      return res.status(400).json({
-        success: false,
-        message: "Not enough data for prediction (need at least 24 hours)",
-      });
+    // Fallback: if hourly aggregation has no data, use latest 10 raw points
+    if (data.length < 1) {
+      const fallback = await SensorData.find({})
+        .select("temperature humidity timestamp")
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean();
+
+      if (fallback.length < 1) {
+        return res.json({
+          success: true,
+          predictions: [],
+          trainingHours: 0,
+          message: "Not enough data for prediction (need at least 1 data point)",
+        });
+      }
+
+      // Map raw points into the same shape as aggregated data
+      data = fallback
+        .reverse()
+        .map((d, idx) => ({
+          _id: `raw-${idx}`,
+          avgTemp: d.temperature,
+          avgHumid: d.humidity,
+          timestamp: d.timestamp,
+        }));
     }
 
     // Prepare data for linear regression
@@ -219,8 +267,17 @@ exports.predictNextDay = async (req, res) => {
 
     for (let i = 0; i < 24; i++) {
       const nextIndex = currentHour + i;
-      const predictedTemp = tempModel.predict(nextIndex);
-      const predictedHumid = humidModel.predict(nextIndex);
+      let predictedTemp = tempModel.predict(nextIndex);
+      let predictedHumid = humidModel.predict(nextIndex);
+
+      // Handle case where all data is the same (no variation)
+      // If slope is 0 or very close to 0, use the last known value
+      if (Math.abs(tempModel.slope) < 0.0001) {
+        predictedTemp = yTemp[yTemp.length - 1];
+      }
+      if (Math.abs(humidModel.slope) < 0.0001) {
+        predictedHumid = yHumid[yHumid.length - 1];
+      }
 
       const nextTimestamp = new Date(
         lastTimestamp.getTime() + (i + 1) * 60 * 60 * 1000

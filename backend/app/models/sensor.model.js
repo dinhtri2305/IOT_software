@@ -18,9 +18,21 @@ const sensorDataSchema = new mongoose.Schema(
     },
     gasLevel: {
       type: Number,
-      required: true,
+      required: false,
+      default: null,
       min: 0,
       // XÓA DÒNG max: 4095 hoặc max: 10000 đi luôn!
+    },
+    ldrValue: {
+      type: Number,
+      required: false,
+      default: null,
+      min: 0,
+    },
+    lightLed: {
+      type: String,
+      enum: ["on", "off", null],
+      default: null,
     },
     // No flame sensor available on target devices; remove flame field
     fireDetected: {

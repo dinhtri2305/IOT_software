@@ -1,0 +1,158 @@
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  height: 100%;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.settings-subtitle {
+  font-size: 14px;
+  color: #60708c;
+  margin-top: 4px;
+}
+
+.mqtt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid #dfe6f3;
+  background: #fff;
+}
+
+.mqtt-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #ff5252;
+}
+
+.mqtt-status.ok .dot {
+  background: #2ecc71;
+}
+
+.settings-card {
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px;
+  border-radius: 12px;
+  border: 1px solid #eef2f8;
+  background: linear-gradient(90deg, #fdfefe, #f7fbff);
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: #0b2a5b;
+}
+
+.setting-desc {
+  font-size: 13px;
+  color: #60708c;
+}
+
+.setting-icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* Toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #c5cedd;
+  transition: 0.3s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+input:checked + .slider {
+  background-color: #2ecc71;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+.switch.switch-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.settings-loading,
+.settings-error {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+.settings-error {
+  background: #fdecea;
+  color: #b3261e;
+  border: 1px solid #f5c2c0;
+}

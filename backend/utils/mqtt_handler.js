@@ -7,6 +7,7 @@ class MQTTHandler {
   constructor() {
     this.client = null;
     this.connected = false;
+    this.messageCount = 0; // Counter for received messages
   }
 
   connect() {
@@ -36,7 +37,7 @@ class MQTTHandler {
       const topics = [
         process.env.MQTT_TOPIC_SENSOR,
         process.env.MQTT_TOPIC_STATUS,
-        process.env.MQTT_TOPIC_CONTROL, // để nhận lệnh từ frontend
+        // Backend không subscribe CONTROL topic - chỉ publish
       ].filter(Boolean);
 
       this.client.subscribe(topics, { qos: 1 }, (err) => {
@@ -57,16 +58,17 @@ class MQTTHandler {
         return;
       }
 
-      console.log(`Message from ${topic}:`, payload);
+      // Increment counter for sensor data
+      if (topic === process.env.MQTT_TOPIC_SENSOR) {
+        this.messageCount++;
+        console.log(`\n\n========== COUNT: ${this.messageCount} ==========`);
+      }
 
       try {
         if (topic === process.env.MQTT_TOPIC_SENSOR) {
           await this.handleSensorData(payload);
         } else if (topic === process.env.MQTT_TOPIC_STATUS) {
           await this.handleDeviceStatus(payload);
-        } else if (topic === process.env.MQTT_TOPIC_CONTROL) {
-          // Nhận lệnh từ frontend → forward lại cho ESP32
-          this.publishControl(payload);
         }
       } catch (err) {
         console.error("Handler error:", err);
@@ -100,14 +102,32 @@ class MQTTHandler {
     if (!data || typeof data !== "object") return;
 
     try {
+      // Normalize timestamp: fallback to current time if missing/invalid/too old
+      let timestamp = new Date();
+      if (data.timestamp !== undefined && data.timestamp !== null) {
+        const candidate = new Date(data.timestamp);
+        const year2000 = new Date("2000-01-01T00:00:00Z");
+        if (!Number.isNaN(candidate.getTime()) && candidate > year2000) {
+          timestamp = candidate;
+        }
+      }
+
       const sensor = new SensorData({
         deviceId: data.deviceId || "unknown",
         temperature: data.temperature ?? null,
         humidity: data.humidity ?? null,
-        gasLevel: data.gasLevel ?? null,
+        // accept gasLevel or gasVoltage (fallback)
+        gasLevel:
+          data.gasLevel !== undefined
+            ? data.gasLevel
+            : data.gasVoltage !== undefined
+            ? data.gasVoltage
+            : null,
+        ldrValue: data.ldrValue ?? null,
+        lightLed: data.lightLed || null,
         fireDetected: Boolean(data.fireDetected),
         location: data.location || "Unknown",
-        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        timestamp,
       });
 
       await sensor.save();
@@ -152,8 +172,6 @@ class MQTTHandler {
     this.client.publish(topic, message, { qos: 1 }, (err) => {
       if (err) {
         console.error("Publish failed:", err.message);
-      } else {
-        console.log("Control sent:", command);
       }
     });
 

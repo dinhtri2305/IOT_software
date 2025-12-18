@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "../../styles/global.css";
-import "../../styles/auth.css"
+import "../../styles/auth.css";
 import "./ForgotPassword.css";
 
 function ForgotPassword() {
@@ -34,12 +34,12 @@ function ForgotPassword() {
 
   // Hàm kiểm tra OTP
   const validateOTP = (otp) => {
-    return otp.every(digit => /^\d$/.test(digit));
+    return otp.every((digit) => /^\d$/.test(digit));
   };
 
   // Hàm reset form OTP
   const resetOTPForm = () => {
-    setOtp(['', '', '', '', '', '']);
+    setOtp(["", "", "", "", "", ""]);
     otpRefs[0].current.focus(); // Focus vào ô đầu tiên
   };
 
@@ -55,12 +55,12 @@ function ForgotPassword() {
     setErrors((prev) => ({ ...prev, otp: "" }));
 
     // Tự động focus vào ô tiếp theo
-    if (value !== '' && index < 5) {
+    if (value !== "" && index < 5) {
       otpRefs[index + 1].current.focus();
     }
 
     // Kiểm tra nếu đã nhập đủ 6 số
-    if (newOtp.every(digit => digit !== '')) {
+    if (newOtp.every((digit) => digit !== "")) {
       // Tự động submit sau 500ms
       setTimeout(async () => {
         if (validateOTP(newOtp)) {
@@ -89,17 +89,21 @@ function ForgotPassword() {
                   "Đã nhập sai OTP 3 lần.<br />Chuyển hướng về trang Khôi phục mật khẩu trong 5 giây..."
                 );
                 setTimeout(() => {
-                  window.location.href = "/forgot_password";
+                  window.location.href = "/forgot-password";
                 }, 5000);
               } else {
                 setMessage(
-                  `Nhập sai OTP ${newAttempts} lần. Còn ${3 - newAttempts} lần nhập.`
+                  `Nhập sai OTP ${newAttempts} lần. Còn ${
+                    3 - newAttempts
+                  } lần nhập.`
                 );
               }
             } else if (error.response.status === 500) {
               setMessage("Lỗi từ server");
             } else {
-              setMessage("Lỗi không xác định hoặc không thể kết nối đến server");
+              setMessage(
+                "Lỗi không xác định hoặc không thể kết nối đến server"
+              );
             }
 
             resetOTPForm();
@@ -126,9 +130,7 @@ function ForgotPassword() {
       } else if (!validateEmail(email)) {
         newErrors.email = "Email không hợp lệ";
       }
-    } 
-
-    else if (step === 3) {
+    } else if (step === 3) {
       if (!newpassword.trim()) {
         newErrors.newpassword = "Vui lòng nhập mật khẩu mới";
       }
@@ -179,8 +181,8 @@ function ForgotPassword() {
             {
               email,
               newPassword: newpassword,
-              resetToken: resetToken
-            },
+              resetToken: resetToken,
+            }
           );
 
           if (response.status === 200) {
@@ -304,7 +306,7 @@ function ForgotPassword() {
                   }`}
                 >
                   <span className="auth-icon">
-                    <img src="/assets/key.png" alt="Mật khẩu" loading="eager"/>
+                    <img src="/assets/key.png" alt="Mật khẩu" loading="eager" />
                   </span>
                   <input
                     type="password"
@@ -367,7 +369,7 @@ function ForgotPassword() {
               ></span>
             </form>
           )}
-          
+
           <div className="auth-switch">
             <span>Nhớ mật khẩu rồi?</span>
             <Link to="/login" className="auth-link auth-link--accent">
@@ -387,8 +389,8 @@ function ForgotPassword() {
           <div className="auth-hero-copy">
             <h2>Khôi phục an toàn</h2>
             <p>
-              Đặt lại mật khẩu của bạn chỉ trong vài bước và tiếp tục theo dõi hệ
-              thống cảnh báo cháy mọi lúc mọi nơi.
+              Đặt lại mật khẩu của bạn chỉ trong vài bước và tiếp tục theo dõi
+              hệ thống cảnh báo cháy mọi lúc mọi nơi.
             </p>
           </div>
 

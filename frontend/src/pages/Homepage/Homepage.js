@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { useAuth } from "../../utils/AuthContext";
+<<<<<<< HEAD
 import ChatbotComponent from "./components/Chatbot";
+=======
+import Overview from "./components/Overview";
+import Analytics from "./components/Analytics";
+import Archive from "./components/Archive";
+import Settings from "./components/Settings";
+>>>>>>> 33a6f7a383e85668fb98600a733fcb7767e7dad5
 import "./Homepage.css";
 
 const Homepage = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // tổng quan mặc định
-  const { userInfo, logout } = useAuth();
+  const { userInfo, logout, token } = useAuth();
 
   return (
     <div className="app-shell">
@@ -77,10 +84,14 @@ const Homepage = () => {
         {/* Thanh top bar */}
         <header className="topbar">
           <div className="topbar-left">
+<<<<<<< HEAD
             <button 
               className="assistant-chip"
               onClick={() => setIsChatbotOpen(true)}
             >
+=======
+            <button className="assistant-chip">
+>>>>>>> 33a6f7a383e85668fb98600a733fcb7767e7dad5
               <span className="assistant-icon">
                 <img src="/assets/robot-assistant.png" alt="Hỗ trợ" />
               </span>
@@ -88,7 +99,11 @@ const Homepage = () => {
             </button>
           </div>
           <div className="topbar-right">
-            <img src="/assets/flag.png" alt="Ngôn ngữ" className="topbar-flag"/>
+            <img
+              src="/assets/flag.png"
+              alt="Ngôn ngữ"
+              className="topbar-flag"
+            />
             <div className="user-menu">
               <button
                 className="topbar-avatar"
@@ -115,39 +130,13 @@ const Homepage = () => {
 
         {/* Nội dung chính – mỗi tab nav có một content riêng */}
         <main className="content">
-          {activeTab === "overview" && (
-            <div className="content-placeholder">
-              <p>Khu vực TỔNG QUAN</p>
-              <p>
-                Sau này bạn đặt các thẻ nhiệt độ, độ ẩm, nồng độ khí gas giống
-                mockup vào đây.
-              </p>
-            </div>
-          )}
+          {activeTab === "overview" && <Overview authToken={token} />}
 
-          {activeTab === "analytics" && (
-            <div className="content-placeholder">
-              <p>Khu vực PHÂN TÍCH</p>
-              <p>
-                Chừa sẵn để bạn render biểu đồ đường, biểu đồ tròn theo dữ liệu
-                từ `analytics.controller`.
-              </p>
-            </div>
-          )}
+          {activeTab === "analytics" && <Analytics authToken={token} />}
 
-          {activeTab === "archive" && (
-            <div className="content-placeholder">
-              <p>Khu vực LƯU TRỮ</p>
-              <p>Đây là nơi bạn thêm bảng lịch sử cảnh báo hoặc log cảm biến.</p>
-            </div>
-          )}
+          {activeTab === "archive" && <Archive authToken={token} />}
 
-          {activeTab === "settings" && (
-            <div className="content-placeholder">
-              <p>Khu vực CÀI ĐẶT</p>
-              <p>Để dành cho cấu hình hệ thống, tài khoản, ngưỡng cảnh báo.</p>
-            </div>
-          )}
+          {activeTab === "settings" && <Settings authToken={token} />}
         </main>
       </div>
 

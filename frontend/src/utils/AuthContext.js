@@ -12,6 +12,7 @@ const clearAuthData = (storage) => {
 
 export const AuthProvider = ({ children }) => {
   const [userInfo, setUserInfo] = useState(null);
+  const [token, setToken] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,9 +22,10 @@ export const AuthProvider = ({ children }) => {
     ];
 
     for (const { storage } of sources) {
-      const token = storage.getItem("token");
-      if (!token) continue;
+      const savedToken = storage.getItem("token");
+      if (!savedToken) continue;
 
+      setToken(savedToken);
       const savedUserInfo = storage.getItem("userInfo");
       if (savedUserInfo) {
         setUserInfo(JSON.parse(savedUserInfo));
@@ -66,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     };  
 
   return (
-    <AuthContext.Provider value={{ userInfo, setUserInfo, logout }}>
+    <AuthContext.Provider value={{ userInfo, setUserInfo, logout, token }}>
       {children}
     </AuthContext.Provider>
   );
