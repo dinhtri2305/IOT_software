@@ -15,7 +15,7 @@
 #define BUZZER_PIN 27
 #define RELAY_PIN 26
 #define LED_ALERT_PIN 25
-#define LED_LIGHT_PIN 33   // 💡 LED chiếu sáng tự động
+#define LED_LIGHT_PIN 33 // 💡 LED chiếu sáng tự động
 
 /* ================== MQ2 CHIA ÁP ================== */
 #define Rt 33000.0
@@ -25,19 +25,19 @@
 /* ================== NGƯỠNG ================== */
 #define FIRE_SMOKE_VOUT 3.4
 #define FIRE_TEMP 60.0
-#define LDR_DARK_THRESHOLD 2000   // < ngưỡng này là tối
+#define LDR_DARK_THRESHOLD 2000 // < ngưỡng này là tối
 
 /* ================== WIFI & MQTT ================== */
-const char* ssid = "Wokwi-GUEST";
-const char* password = "";
+const char *ssid = "Wokwi-GUEST";
+const char *password = "";
 
-const char* mqtt_broker = "broker.hivemq.com";
-const int   mqtt_port   = 1883;
+const char *mqtt_broker = "broker.hivemq.com";
+const int mqtt_port = 1883;
 
-const char* mqtt_client_id = "ESP32_FireSystem_Wokwi";
-const char* topic_sensor  = "fire/sensor/data";
-const char* topic_control = "fire/device/control";
-const char* topic_status  = "fire/device/status";  // ✅ Gửi trạng thái về backend
+const char *mqtt_client_id = "ESP32_FireSystem_Wokwi";
+const char *topic_sensor = "fire/sensor/data";
+const char *topic_control = "fire/device/control";
+const char *topic_status = "fire/device/status"; // ✅ Gửi trạng thái về backend
 
 /* ================== OBJECT ================== */
 WiFiClient espClient;
@@ -50,96 +50,125 @@ bool relayState = false;
 bool buzzerState = false;
 bool alertLedState = false;
 bool emergencyMode = false;  // ✅ Chế độ khẩn cấp (tự động khi phát hiện cháy)
+bool manualOverride = false; // ✅ Cho phép điều khiển thủ công ngay cả khi cháy
 
 unsigned long lastStatusSend = 0;
-const unsigned long STATUS_INTERVAL = 10000;  // ✅ Gửi trạng thái mỗi 10 giây
+const unsigned long STATUS_INTERVAL = 10000; // ✅ Gửi trạng thái mỗi 10 giây
 
 /* ================== MQTT CALLBACK ================== */
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char *topic, byte *payload, unsigned int length)
+{
   String msg;
-  for (int i = 0; i < length; i++) msg += (char)payload[i];
+  for (int i = 0; i < length; i++)
+    msg += (char)payload[i];
 
   Serial.println("MQTT control: " + msg);
 
   DynamicJsonDocument doc(512);
-  if (deserializeJson(doc, msg)) {
+  if (deserializeJson(doc, msg))
+  {
     Serial.println("Failed to parse JSON");
     return;
   }
 
   // ✅ Kiểm tra deviceId (nếu có)
-  if (doc.containsKey("deviceId")) {
+  if (doc.containsKey("deviceId"))
+  {
     String receivedDeviceId = doc["deviceId"].as<String>();
-    if (receivedDeviceId != "ESP32_001") {
+    if (receivedDeviceId != "ESP32_001")
+    {
       Serial.println("Device ID mismatch, ignoring");
       return;
     }
   }
 
   // ✅ Xử lý lệnh emergency stop
-  if (doc.containsKey("emergency") && doc["emergency"] == true) {
+  if (doc.containsKey("emergency") && doc["emergency"] == true)
+  {
     emergencyMode = false;  // Tắt chế độ khẩn cấp
+    manualOverride = false; // Reset manual override
     relayState = false;
     buzzerState = false;
     alertLedState = false;
     digitalWrite(RELAY_PIN, LOW);
     digitalWrite(BUZZER_PIN, LOW);
     digitalWrite(LED_ALERT_PIN, LOW);
-    sendDeviceStatus();  // Gửi trạng thái ngay
+    Serial.println("Emergency stop - All devices OFF, auto mode restored");
+    sendDeviceStatus(); // Gửi trạng thái ngay
     return;
   }
 
-  // ✅ Chỉ cập nhật trạng thái nếu không ở chế độ khẩn cấp
-  if (!emergencyMode) {
-    if (doc.containsKey("relay")) {
+  // ✅ Xử lý lệnh điều khiển từ web (cho phép manual override)
+  bool hasControlCommand = doc.containsKey("relay") || doc.containsKey("buzzer") || doc.containsKey("led");
+
+  if (hasControlCommand)
+  {
+    // ✅ Bất kỳ lệnh điều khiển nào cũng kích hoạt manual override
+    manualOverride = true;
+
+    if (doc.containsKey("relay"))
+    {
       String relayCmd = doc["relay"].as<String>();
       relayState = (relayCmd == "on");
       digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
-      Serial.println("Relay: " + relayCmd);
+      Serial.println("Manual control - Relay: " + relayCmd);
     }
 
-    if (doc.containsKey("buzzer")) {
+    if (doc.containsKey("buzzer"))
+    {
       String buzzerCmd = doc["buzzer"].as<String>();
       buzzerState = (buzzerCmd == "on");
       digitalWrite(BUZZER_PIN, buzzerState ? HIGH : LOW);
-      Serial.println("Buzzer: " + buzzerCmd);
+      Serial.println("Manual control - Buzzer: " + buzzerCmd);
     }
 
-    if (doc.containsKey("led")) {
+    if (doc.containsKey("led"))
+    {
       String ledCmd = doc["led"].as<String>();
-      if (ledCmd == "on") {
+      if (ledCmd == "on")
+      {
         alertLedState = true;
         digitalWrite(LED_ALERT_PIN, HIGH);
-      } else if (ledCmd == "off") {
+      }
+      else if (ledCmd == "off")
+      {
         alertLedState = false;
         digitalWrite(LED_ALERT_PIN, LOW);
-      } else if (ledCmd == "blink") {
-        // ✅ Xử lý blink (nhấp nháy)
-        alertLedState = true;
-        // Có thể implement blink logic ở đây
       }
-      Serial.println("LED: " + ledCmd);
+      else if (ledCmd == "blink")
+      {
+        alertLedState = true;
+      }
+      Serial.println("Manual control - LED: " + ledCmd);
+    }
+
+    if (emergencyMode)
+    {
+      Serial.println("⚠️ Manual override active - User control priority over fire detection");
     }
 
     // ✅ Gửi trạng thái về backend sau khi nhận lệnh
     sendDeviceStatus();
-  } else {
-    Serial.println("Emergency mode active, ignoring control commands");
   }
 }
 
 /* ================== MQTT CONNECT ================== */
-void connectMQTT() {
-  while (!client.connected()) {
+void connectMQTT()
+{
+  while (!client.connected())
+  {
     Serial.print("Connecting MQTT...");
-    if (client.connect(mqtt_client_id)) {
+    if (client.connect(mqtt_client_id))
+    {
       Serial.println("OK");
       client.subscribe(topic_control);
       Serial.println("Subscribed to: " + String(topic_control));
-      
+
       // ✅ Gửi trạng thái ban đầu khi kết nối
       sendDeviceStatus();
-    } else {
+    }
+    else
+    {
       Serial.print("FAILED, rc=");
       Serial.print(client.state());
       Serial.println(" retrying in 3 seconds");
@@ -150,15 +179,16 @@ void connectMQTT() {
 
 /* ================== GỬI DỮ LIỆU CẢM BIẾN ================== */
 void sendSensorData(float temp, float hum, float gasV,
-                    int ldrValue, bool fire) {
+                    int ldrValue, bool fire)
+{
 
   DynamicJsonDocument doc(512);
 
   doc["deviceId"] = "ESP32_001";
   doc["temperature"] = temp;
   doc["humidity"] = hum;
-  doc["gasVoltage"] = gasV;  // ✅ Backend hỗ trợ cả gasVoltage và gasLevel
-  doc["gasLevel"] = gasV;    // ✅ Gửi cả gasLevel để đảm bảo tương thích
+  doc["gasVoltage"] = gasV; // ✅ Backend hỗ trợ cả gasVoltage và gasLevel
+  doc["gasLevel"] = gasV;   // ✅ Gửi cả gasLevel để đảm bảo tương thích
   doc["ldrValue"] = ldrValue;
   doc["lightLed"] = digitalRead(LED_LIGHT_PIN) ? "on" : "off";
   doc["fireDetected"] = fire;
@@ -166,16 +196,20 @@ void sendSensorData(float temp, float hum, float gasV,
 
   String payload;
   serializeJson(doc, payload);
-  
-  if (client.publish(topic_sensor, payload.c_str())) {
+
+  if (client.publish(topic_sensor, payload.c_str()))
+  {
     Serial.println("Sent sensor data: " + payload);
-  } else {
+  }
+  else
+  {
     Serial.println("Failed to publish sensor data");
   }
 }
 
 /* ================== GỬI TRẠNG THÁI THIẾT BỊ ================== */
-void sendDeviceStatus() {
+void sendDeviceStatus()
+{
   DynamicJsonDocument doc(256);
 
   doc["deviceId"] = "ESP32_001";
@@ -183,22 +217,27 @@ void sendDeviceStatus() {
   doc["buzzer"] = buzzerState ? "on" : "off";
   doc["led"] = alertLedState ? "on" : "off";
   doc["emergencyMode"] = emergencyMode;
+  doc["manualOverride"] = manualOverride;
   doc["timestamp"] = millis();
 
   String payload;
   serializeJson(doc, payload);
-  
-  if (client.publish(topic_status, payload.c_str())) {
+
+  if (client.publish(topic_status, payload.c_str()))
+  {
     Serial.println("Sent device status: " + payload);
-  } else {
+  }
+  else
+  {
     Serial.println("Failed to publish device status");
   }
-  
+
   lastStatusSend = millis();
 }
 
 /* ================== SETUP ================== */
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   delay(1000);
 
@@ -221,15 +260,17 @@ void setup() {
   WiFi.begin(ssid, password);
   lcd.setCursor(0, 0);
   lcd.print("Connecting WiFi");
-  
+
   int wifiAttempts = 0;
-  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 20) {
+  while (WiFi.status() != WL_CONNECTED && wifiAttempts < 20)
+  {
     delay(500);
     Serial.print(".");
     wifiAttempts++;
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("WiFi Connected");
@@ -237,7 +278,9 @@ void setup() {
     lcd.print(WiFi.localIP());
     Serial.println("\nWiFi Connected!");
     Serial.println("IP: " + WiFi.localIP().toString());
-  } else {
+  }
+  else
+  {
     lcd.clear();
     lcd.print("WiFi Failed!");
     Serial.println("\nWiFi Connection Failed!");
@@ -255,9 +298,11 @@ void setup() {
 }
 
 /* ================== LOOP ================== */
-void loop() {
+void loop()
+{
   // ✅ Duy trì kết nối MQTT
-  if (!client.connected()) {
+  if (!client.connected())
+  {
     connectMQTT();
   }
   client.loop();
@@ -265,8 +310,10 @@ void loop() {
   /* ====== ĐỌC CẢM BIẾN ====== */
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
-  if (isnan(temperature)) temperature = 0;
-  if (isnan(humidity)) humidity = 0;
+  if (isnan(temperature))
+    temperature = 0;
+  if (isnan(humidity))
+    humidity = 0;
 
   int gasADC = analogRead(MQ2_PIN);
   float gasV = gasADC * (VREF / 4095.0) * ((Rt + Rb) / Rb);
@@ -280,24 +327,57 @@ void loop() {
   digitalWrite(LED_LIGHT_PIN, isDark ? HIGH : LOW);
 
   /* ====== XỬ LÝ CHÁY (ƯU TIÊN CAO) ====== */
-  if (fireDetected) {
-    if (!emergencyMode) {
+  if (fireDetected)
+  {
+    if (!emergencyMode)
+    {
+      // ✅ Phát hiện cháy MỚI → reset manual override, quay về chế độ tự động
       emergencyMode = true;
-      Serial.println("🔥 FIRE DETECTED - EMERGENCY MODE ACTIVATED");
+      manualOverride = false;
+      Serial.println("🔥 FIRE DETECTED - EMERGENCY MODE ACTIVATED (Auto control)");
     }
-    // ✅ Trong chế độ khẩn cấp, tự động bật tất cả
-    digitalWrite(BUZZER_PIN, HIGH);
-    digitalWrite(RELAY_PIN, HIGH);
-    digitalWrite(LED_ALERT_PIN, HIGH);
-  } else {
-    // ✅ Chỉ tắt chế độ khẩn cấp khi không còn cháy
-    if (emergencyMode) {
+
+    // ✅ Nếu KHÔNG có manual override → tự động bật tất cả
+    if (!manualOverride)
+    {
+      relayState = true;
+      buzzerState = true;
+      alertLedState = true;
+      digitalWrite(BUZZER_PIN, HIGH);
+      digitalWrite(RELAY_PIN, HIGH);
+      digitalWrite(LED_ALERT_PIN, HIGH);
+    }
+    else
+    {
+      // ✅ Có manual override → giữ nguyên trạng thái người dùng đã chọn
+      digitalWrite(BUZZER_PIN, buzzerState ? HIGH : LOW);
+      digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
+      digitalWrite(LED_ALERT_PIN, alertLedState ? HIGH : LOW);
+    }
+  }
+  else
+  {
+    // ✅ Hết cháy → tắt chế độ khẩn cấp
+    if (emergencyMode)
+    {
       emergencyMode = false;
       Serial.println("Fire cleared - Emergency mode deactivated");
-      // Giữ nguyên trạng thái từ lệnh điều khiển
+
+      // ✅ Nếu KHÔNG có manual override → tự động tắt hết
+      if (!manualOverride)
+      {
+        relayState = false;
+        buzzerState = false;
+        alertLedState = false;
+        Serial.println("All devices turned OFF automatically");
+      }
+      else
+      {
+        Serial.println("Manual override active - keeping user settings");
+      }
     }
-    
-    // ✅ Áp dụng trạng thái từ lệnh điều khiển (hoặc từ web)
+
+    // ✅ Áp dụng trạng thái hiện tại
     digitalWrite(BUZZER_PIN, buzzerState ? HIGH : LOW);
     digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
     digitalWrite(LED_ALERT_PIN, alertLedState ? HIGH : LOW);
@@ -305,28 +385,31 @@ void loop() {
 
   /* ====== GỬI DỮ LIỆU CẢM BIẾN MQTT ====== */
   sendSensorData(
-    temperature,
-    humidity,
-    gasV,
-    ldrValue,
-    fireDetected
-  );
+      temperature,
+      humidity,
+      gasV,
+      ldrValue,
+      fireDetected);
 
   /* ====== GỬI TRẠNG THÁI THIẾT BỊ ĐỊNH KỲ ====== */
-  if (millis() - lastStatusSend > STATUS_INTERVAL) {
+  if (millis() - lastStatusSend > STATUS_INTERVAL)
+  {
     sendDeviceStatus();
   }
 
   /* ====== HIỂN THỊ LCD ====== */
   lcd.clear();
-  if (fireDetected) {
+  if (fireDetected)
+  {
     lcd.setCursor(0, 0);
     lcd.print("🔥 CANH BAO CHAY");
     lcd.setCursor(0, 1);
     lcd.print("Gas:");
     lcd.print(gasV, 1);
     lcd.print("V");
-  } else {
+  }
+  else
+  {
     lcd.setCursor(0, 0);
     lcd.print("T:");
     lcd.print(temperature, 1);
@@ -343,4 +426,3 @@ void loop() {
 
   delay(3000);
 }
-

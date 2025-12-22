@@ -13,21 +13,38 @@ const sendControlCommand = async (command, deviceId = "ESP32_001") => {
 
   if (success) {
     try {
+      const updates = {
+        lastSeen: new Date(),
+        isOnline: true,
+      };
+      
+      // ✅ Chỉ cập nhật các field có trong command
+      if (command.relay !== undefined) {
+        updates["relay.status"] = command.relay;
+        updates["relay.lastChanged"] = new Date();
+      }
+      if (command.buzzer !== undefined) {
+        updates["buzzer.status"] = command.buzzer;
+        updates["buzzer.lastChanged"] = new Date();
+      }
+      if (command.led !== undefined) {
+        updates["led.status"] = command.led;
+        updates["led.lastChanged"] = new Date();
+      }
+      
       const device = await Device.findOneAndUpdate(
         { deviceId },
-        {
-          $set: {
-            "relay.status": command.relay || undefined,
-            "buzzer.status": command.buzzer || undefined,
-            "led.status": command.led || undefined,
-            lastSeen: new Date(),
-          },
-        },
-        { new: true }
+        { $set: updates },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
       );
-      if (device) await device.save();
+      
+      if (device) {
+        await device.save();
+        console.log(`✅ Device ${deviceId} DB updated:`, updates);
+      }
     } catch (err) {
-      console.error("Update device status error:", err.message);
+      console.error("❌ Update device status error:", err.message);
+      console.error("Stack:", err.stack);
     }
   }
 

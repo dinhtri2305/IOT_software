@@ -49,11 +49,19 @@ class MQTTHandler {
     });
 
     this.client.on("message", async (topic, message) => {
+      console.log(`\n📨 MQTT Message received on topic: "${topic}"`);
+      console.log(`📋 Expected topics:`, {
+        sensor: process.env.MQTT_TOPIC_SENSOR,
+        status: process.env.MQTT_TOPIC_STATUS,
+        control: process.env.MQTT_TOPIC_CONTROL,
+      });
+      
       let payload;
       try {
         payload = JSON.parse(message.toString());
+        console.log(`📦 Parsed payload:`, JSON.stringify(payload, null, 2));
       } catch (err) {
-        console.warn("Invalid JSON received on", topic, message.toString());
+        console.warn("❌ Invalid JSON received on", topic, message.toString());
         return;
       }
 
@@ -67,10 +75,14 @@ class MQTTHandler {
         if (topic === process.env.MQTT_TOPIC_SENSOR) {
           await this.handleSensorData(payload);
         } else if (topic === process.env.MQTT_TOPIC_STATUS) {
+          console.log(`✅ Processing device status from topic: ${topic}`);
           await this.handleDeviceStatus(payload);
+        } else {
+          console.warn(`⚠️ Unknown topic received: ${topic}`);
+          console.warn(`   Expected: ${process.env.MQTT_TOPIC_SENSOR} or ${process.env.MQTT_TOPIC_STATUS}`);
         }
       } catch (err) {
-        console.error("Handler error:", err);
+        console.error("❌ Handler error:", err);
       }
     });
 
@@ -173,8 +185,19 @@ class MQTTHandler {
 
         if (Object.keys(updates).length > 0) {
           updates["lastSeen"] = new Date();
-          await Device.findOneAndUpdate({ deviceId: data.deviceId }, { $set: updates });
-          console.log(`Device ${data.deviceId} status updated:`, updates);
+          const updated = await Device.findOneAndUpdate(
+            { deviceId: data.deviceId },
+            { $set: updates },
+            { new: true }
+          );
+          console.log(`✅ Device ${data.deviceId} status updated:`, updates);
+          console.log(`📊 Current device state:`, {
+            relay: updated.relay?.status,
+            buzzer: updated.buzzer?.status,
+            led: updated.led?.status,
+          });
+        } else {
+          console.log(`ℹ️ No status updates needed for device ${data.deviceId}`);
         }
       }
 

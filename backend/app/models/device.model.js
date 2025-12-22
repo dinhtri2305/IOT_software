@@ -116,21 +116,28 @@ deviceSchema.statics.getAllStatus = async function () {
     .sort({ lastSeen: -1 })
     .lean()
     .then((devices) =>
-      devices.map((d) => ({
-        deviceId: d.deviceId,
-        deviceName: d.deviceName,
-        location: d.location,
-        isOnline: d.isOnline,
-        lastSeen: d.lastSeen,
-        health: d.health,
-        relay: d.relay.status,
-        buzzer: d.buzzer.status,
-        led: d.led.status,
-        signalStrength: d.signalStrength,
-        firmwareVersion: d.firmwareVersion,
-        uptime: d.uptime,
-        ipAddress: d.ipAddress,
-      }))
+      devices.map((d) => {
+        // ✅ Xử lý trường hợp relay/buzzer/led có thể là null hoặc undefined
+        const relayStatus = d.relay?.status || d.relay || "off";
+        const buzzerStatus = d.buzzer?.status || d.buzzer || "off";
+        const ledStatus = d.led?.status || d.led || "off";
+        
+        return {
+          deviceId: d.deviceId,
+          deviceName: d.deviceName,
+          location: d.location,
+          isOnline: d.isOnline,
+          lastSeen: d.lastSeen,
+          health: d.health,
+          relay: relayStatus,  // ✅ Đảm bảo luôn là string
+          buzzer: buzzerStatus,
+          led: ledStatus,
+          signalStrength: d.signalStrength,
+          firmwareVersion: d.firmwareVersion,
+          uptime: d.uptime,
+          ipAddress: d.ipAddress,
+        };
+      })
     );
 };
 
