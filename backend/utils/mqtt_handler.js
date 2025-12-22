@@ -11,9 +11,8 @@ class MQTTHandler {
   }
 
   connect() {
-    const brokerUrl = `mqtt://${
-      process.env.MQTT_BROKER || "broker.hivemq.com"
-    }:${process.env.MQTT_PORT || 1883}`;
+    const brokerUrl = `mqtt://${process.env.MQTT_BROKER || "broker.hivemq.com"
+      }:${process.env.MQTT_PORT || 1883}`;
     const options = {
       clientId: `backend_${Date.now()}_${Math.random()
         .toString(16)
@@ -121,8 +120,8 @@ class MQTTHandler {
           data.gasLevel !== undefined
             ? data.gasLevel
             : data.gasVoltage !== undefined
-            ? data.gasVoltage
-            : null,
+              ? data.gasVoltage
+              : null,
         ldrValue: data.ldrValue ?? null,
         lightLed: data.lightLed || null,
         fireDetected: Boolean(data.fireDetected),
@@ -142,17 +141,43 @@ class MQTTHandler {
     }
   }
 
-  // Xử lý trạng thái thiết bị (heartbeat)
+  // Xử lý trạng thái thiết bị (heartbeat + actuator status)
   async handleDeviceStatus(data) {
     if (!data?.deviceId) return;
 
     try {
+      // ✅ Cập nhật heartbeat
       await Device.heartbeat(data.deviceId, {
         ipAddress: data.ipAddress,
         signalStrength: data.signalStrength,
         uptime: data.uptime,
         firmwareVersion: data.firmwareVersion,
       });
+
+      // ✅ Cập nhật trạng thái relay/buzzer/led nếu có
+      const device = await Device.findOne({ deviceId: data.deviceId });
+      if (device) {
+        const updates = {};
+        if (data.relay !== undefined) {
+          updates["relay.status"] = data.relay === "on" ? "on" : "off";
+          updates["relay.lastChanged"] = new Date();
+        }
+        if (data.buzzer !== undefined) {
+          updates["buzzer.status"] = data.buzzer === "on" ? "on" : "off";
+          updates["buzzer.lastChanged"] = new Date();
+        }
+        if (data.led !== undefined) {
+          updates["led.status"] = data.led === "on" ? "on" : data.led === "blink" ? "blink" : "off";
+          updates["led.lastChanged"] = new Date();
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updates["lastSeen"] = new Date();
+          await Device.findOneAndUpdate({ deviceId: data.deviceId }, { $set: updates });
+          console.log(`Device ${data.deviceId} status updated:`, updates);
+        }
+      }
+
       console.log(`Device ${data.deviceId} heartbeat OK`);
     } catch (err) {
       console.error("Heartbeat error:", err.message);
