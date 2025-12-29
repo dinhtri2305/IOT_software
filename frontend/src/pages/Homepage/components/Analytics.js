@@ -18,6 +18,7 @@ const Analytics = ({ authToken }) => {
   const [predictedHumidity, setPredictedHumidity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [domainConfig, setDomainConfig] = useState({ x: [0, 100], y: [0, 50] });
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -41,11 +42,14 @@ const Analytics = ({ authToken }) => {
 
       if (tempHumidResponse.data.success) {
         const dataPoints = tempHumidResponse.data.dataPoints || [];
-        setTempHumidityData(
-          dataPoints.map((d, idx) => ({
+        const formattedData = dataPoints
+          .filter((d) => d.humidity != null && d.temperature != null &&
+            !isNaN(d.humidity) && !isNaN(d.temperature) &&
+            d.humidity >= 0 && d.temperature >= 0)
+          .map((d, idx) => ({
             id: idx + 1,
-            humidity: Math.round(d.humidity * 10) / 10,
-            temperature: Math.round(d.temperature * 10) / 10,
+            humidity: Number(Math.round(d.humidity * 10) / 10),
+            temperature: Number(Math.round(d.temperature * 10) / 10),
             label:
               d.timestamp &&
               new Date(d.timestamp).toLocaleString("vi-VN", {
@@ -54,8 +58,57 @@ const Analytics = ({ authToken }) => {
                 day: "2-digit",
                 month: "2-digit",
               }),
-          }))
-        );
+          }));
+
+        console.log("Formatted scatter data:", formattedData);
+        console.log("Data count:", formattedData.length);
+        if (formattedData.length > 0) {
+          const humids = formattedData.map(d => d.humidity);
+          const temps = formattedData.map(d => d.temperature);
+          const minHumid = Math.min(...humids);
+          const maxHumid = Math.max(...humids);
+          const minTemp = Math.min(...temps);
+          const maxTemp = Math.max(...temps);
+
+          console.log("Humidity range:", minHumid, "-", maxHumid);
+          console.log("Temperature range:", minTemp, "-", maxTemp);
+
+          // Calculate domain with padding (10% padding or minimum 5 units)
+          const humidRange = maxHumid - minHumid;
+          const tempRange = maxTemp - minTemp;
+
+          // Handle case where all values are the same
+          const xPadding = humidRange === 0 ? 10 : Math.max(humidRange * 0.1, 5);
+          const yPadding = tempRange === 0 ? 10 : Math.max(tempRange * 0.1, 5);
+
+          const xDomain = [
+            Math.max(0, minHumid - xPadding),
+            maxHumid + xPadding
+          ];
+          const yDomain = [
+            Math.max(0, minTemp - yPadding),
+            maxTemp + yPadding
+          ];
+
+          // Ensure domain values are valid numbers
+          if (!isNaN(xDomain[0]) && !isNaN(xDomain[1]) &&
+            !isNaN(yDomain[0]) && !isNaN(yDomain[1]) &&
+            isFinite(xDomain[0]) && isFinite(xDomain[1]) &&
+            isFinite(yDomain[0]) && isFinite(yDomain[1])) {
+            console.log("X Domain:", xDomain);
+            console.log("Y Domain:", yDomain);
+            // Set domain and data together
+            setDomainConfig({ x: xDomain, y: yDomain });
+            setTempHumidityData(formattedData);
+          } else {
+            console.warn("Invalid domain calculated, using defaults");
+            setDomainConfig({ x: [0, 100], y: [0, 50] });
+            setTempHumidityData(formattedData);
+          }
+        } else {
+          setDomainConfig({ x: [0, 100], y: [0, 50] });
+          setTempHumidityData(formattedData);
+        }
       }
 
       // Fetch temperature and humidity predictions
@@ -100,7 +153,7 @@ const Analytics = ({ authToken }) => {
     <div className="analytics-container">
       {error && <div className="analytics-error">{error}</div>}
 
-      <div className="analytics-layout" style={{gap:40}}>
+      <div className="analytics-layout" style={{ gap: 40 }}>
         {/* Left side - Scatter Chart */}
         <div className="analytics-left">
           <div className="analytics-section">
@@ -111,55 +164,68 @@ const Analytics = ({ authToken }) => {
               {tempHumidityData.length === 0 ? (
                 <div className="analytics-empty">Chưa có dữ liệu</div>
               ) : (
-                <ResponsiveContainer width="100%" height="500px">
-                  <ScatterChart
-                    margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                    <XAxis
-                      dataKey="humidity"
-                      name="Độ ẩm (%)"
-                      type="number"
-                      stroke="#4a90e2"
-                      domain={["dataMin - 5", "dataMax + 5"]}
-                    />
-                    <YAxis
-                      dataKey="temperature"
-                      name="Nhiệt độ (°C)"
-                      type="number"
-                      stroke="#ff7a00"
-                      domain={["dataMin - 5", "dataMax + 5"]}
-                    />
-                    <Tooltip
-                      cursor={{ strokeDasharray: "3 3" }}
-                      formatter={(value, name) =>
-                        name === "temperature"
-                          ? [`${value}°C`, "Nhiệt độ"]
-                          : [`${value}%`, "Độ ẩm"]
-                      }
-                      labelFormatter={(label, payload) => {
-                        const point = payload && payload[0] && payload[0].payload;
-                        return point?.label
-                          ? `Thời gian: ${point.label}`
-                          : "Điểm đo";
-                      }}
-                    />
-                    <Legend />
-                    <Scatter
-                      name="Điểm đo"
-                      data={tempHumidityData}
-                      fill="#ff7a00"
-                      shape="circle"
-                    />
-                  </ScatterChart>
-                </ResponsiveContainer>
+                <div style={{ width: "100%", height: "500px", minHeight: "500px" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart
+                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis
+                        dataKey="humidity"
+                        name="Độ ẩm"
+                        unit="%"
+                        type="number"
+                        stroke="#4a90e2"
+                        domain={domainConfig.x}
+                        label={{ value: "Độ ẩm (%)", position: "insideBottom", offset: -5 }}
+                      />
+                      <YAxis
+                        dataKey="temperature"
+                        name="Nhiệt độ"
+                        unit="°C"
+                        type="number"
+                        stroke="#ff7a00"
+                        domain={domainConfig.y}
+                        label={{ value: "Nhiệt độ (°C)", angle: -90, position: "insideLeft" }}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: "3 3" }}
+                        formatter={(value, name) => {
+                          if (name === "temperature") {
+                            return [`${value}°C`, "Nhiệt độ"];
+                          } else if (name === "humidity") {
+                            return [`${value}%`, "Độ ẩm"];
+                          }
+                          return [value, name];
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload[0] && payload[0].payload) {
+                            const point = payload[0].payload;
+                            return point.label
+                              ? `Thời gian: ${point.label}`
+                              : "Điểm đo";
+                          }
+                          return "Điểm đo";
+                        }}
+                      />
+                      <Legend />
+                      <Scatter
+                        name="Điểm đo"
+                        data={tempHumidityData}
+                        fill="#ff7a00"
+                        shape="circle"
+                        line={false}
+                      />
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           </div>
         </div>
 
         {/* Right side - Predictions (Vertical) */}
-        <div className="analytics-right" style={{gap:50}}>
+        <div className="analytics-right" style={{ gap: 50 }}>
           {/* Chart 2 - Temperature Prediction */}
           <div className="analytics-section">
             <div className="analytics-chart-title">
