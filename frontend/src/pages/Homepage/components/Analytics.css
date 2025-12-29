@@ -30,27 +30,26 @@
 
 .analytics-layout {
   display: flex;
+  flex-direction: row;
   gap: 24px;
   height: 100%;
   overflow: hidden;
+  align-items: center;
+  margin-top: -40px;
 }
 
-/* Left section - Charts 1, 3, 4 */
+/* Left section - Scatter Chart */
 .analytics-left {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-  overflow: hidden;
 }
 
-/* Right section - Gas Distribution (B2) */
+/* Right section - Predictions (Vertical) */
 .analytics-right {
-  flex: 0 0 45%;
+  flex: 0 0 40%;
   display: flex;
   flex-direction: column;
-  min-width: 0;
 }
 
 .analytics-chart-box {
@@ -71,75 +70,35 @@
 }
 
 .analytics-chart-title {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
   font-family: "Inter", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  line-height: 1.4;
+  line-height: 1.5;
   text-align: center;
   padding: 0;
 }
 
-/* Gas Distribution Chart */
-.gas-distribution {
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-  min-height: 660px;
-}
-
-.gas-chart-container {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-}
-
-.gas-chart-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
 .analytics-empty {
   width: 100%;
-  height: 400px;
+  height: 500px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #666;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 /* Temperature vs Humidity Chart (B1) */
 .temp-humidity-chart {
-  flex: 0 0 auto;
-  min-height: 280px;
+  min-height: 500px;
 }
 
-.temp-humidity-chart .recharts-responsive-container {
-  min-height: 400px;
-}
-
-/* Predictions Grid (B3, B4) */
-.analytics-predictions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  flex: 1;
-  min-height: 0;
-}
-
-.analytics-predictions .analytics-chart-title {
-  max-width: 200px;
+.analytics-right .analytics-chart-title {
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.5;
   text-align: center;
-  margin: 0 auto;
 }
 
 .prediction-chart {
@@ -149,23 +108,19 @@
   min-width: 0;
 }
 
-.prediction-chart .recharts-responsive-container {
-  min-height: 100px;
-}
-
 .prediction-value {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 60px;
-  min-height: 120px;
+  min-height: 150px;
   padding: 20px;
   flex-direction: row;
 }
 
 .prediction-icon {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
   flex-shrink: 0;
 }
@@ -227,11 +182,13 @@
 
   .analytics-left {
     flex: 0 0 auto;
-    min-height: 280px;
   }
 
-  .analytics-predictions {
-    grid-template-columns: 1fr;
+  .analytics-right {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
   }
 }
 
@@ -248,13 +205,12 @@
     font-size: 12px;
   }
 
-  .analytics-layout,
-  .analytics-predictions {
+  .analytics-layout {
     gap: 16px;
   }
 
-  .analytics-left {
-    min-height: 240px;
+  .analytics-right {
+    gap: 16px;
   }
 
   .temp-humidity-chart {

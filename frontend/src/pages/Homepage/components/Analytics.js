@@ -100,10 +100,9 @@ const Analytics = ({ authToken }) => {
     <div className="analytics-container">
       {error && <div className="analytics-error">{error}</div>}
 
-      <div className="analytics-layout">
-        {/* Left side - Charts 1, 3, 4 */}
+      <div className="analytics-layout" style={{gap:40}}>
+        {/* Left side - Scatter Chart */}
         <div className="analytics-left">
-          {/* Chart 1 - Temperature vs Humidity (B1) */}
           <div className="analytics-section">
             <div className="analytics-chart-title">
               BIỂU ĐỒ PHÂN BỐ NHIỆT ĐỘ THEO ĐỘ ẨM
@@ -112,7 +111,7 @@ const Analytics = ({ authToken }) => {
               {tempHumidityData.length === 0 ? (
                 <div className="analytics-empty">Chưa có dữ liệu</div>
               ) : (
-                <ResponsiveContainer width="100%" height={400}>
+                <ResponsiveContainer width="100%" height="500px">
                   <ScatterChart
                     margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
                   >
@@ -157,62 +156,44 @@ const Analytics = ({ authToken }) => {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Charts 3 and 4 - Predictions */}
-          <div className="analytics-predictions">
-            {/* Chart 3 - Temperature Prediction (B3) */}
-            <div className="analytics-section">
-              <div className="analytics-chart-title">
-                DỰ BÁO NHIỆT ĐỘ NGÀY MAI (ĐỘ C)
-              </div>
-              <div className="analytics-chart-box prediction-value">
-                <img
-                  src="/assets/thermometer.png"
-                  alt="Thermometer"
-                  className="prediction-icon"
-                />
-                <div className="prediction-value-display">
-                  {predictedTemp.length > 0
-                    ? `${predictedTemp[0].value}`
-                    : "N/A"}
-                </div>
-              </div>
+        {/* Right side - Predictions (Vertical) */}
+        <div className="analytics-right" style={{gap:50}}>
+          {/* Chart 2 - Temperature Prediction */}
+          <div className="analytics-section">
+            <div className="analytics-chart-title">
+              DỰ BÁO NHIỆT ĐỘ NGÀY MAI (ĐỘ C)
             </div>
-
-            {/* Chart 4 - Humidity Prediction (B4) */}
-            <div className="analytics-section">
-              <div className="analytics-chart-title">
-                DỰ BÁO ĐỘ ẨM NGÀY MAI (%)
-              </div>
-              <div className="analytics-chart-box prediction-value">
-                <img
-                  src="/assets/water.png"
-                  alt="Water"
-                  className="prediction-icon"
-                />
-                <div className="prediction-value-display">
-                  {predictedHumidity.length > 0
-                    ? `${predictedHumidity[0].value}`
-                    : "N/A"}
-                </div>
+            <div className="analytics-chart-box prediction-value">
+              <img
+                src="/assets/thermometer.png"
+                alt="Thermometer"
+                className="prediction-icon"
+              />
+              <div className="prediction-value-display">
+                {predictedTemp.length > 0
+                  ? `${predictedTemp[0].value}`
+                  : "N/A"}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right side - Gas Distribution Chart (B2) */}
-        <div className="analytics-right">
+          {/* Chart 3 - Humidity Prediction */}
           <div className="analytics-section">
             <div className="analytics-chart-title">
-              BIỂU ĐỒ PHÂN BỐ NỒNG ĐỘ CÁC LOẠI CHẤT KHÍ
+              DỰ BÁO ĐỘ ẨM NGÀY MAI (%)
             </div>
-            <div className="analytics-chart-box gas-distribution">
-              <div className="gas-chart-container">
-                <img
-                  src="/assets/pie-chart.png"
-                  alt="Biểu đồ phân bố chất khí"
-                  className="gas-chart-image"
-                />
+            <div className="analytics-chart-box prediction-value">
+              <img
+                src="/assets/water.png"
+                alt="Water"
+                className="prediction-icon"
+              />
+              <div className="prediction-value-display">
+                {predictedHumidity.length > 0
+                  ? `${predictedHumidity[0].value}`
+                  : "N/A"}
               </div>
             </div>
           </div>
