@@ -226,6 +226,26 @@ class MQTTHandler {
     return true;
   }
 
+  // Gửi riêng message cho LCD lên topic riêng
+  publishLCD(command) {
+    if (!this.connected || !this.client) {
+      console.error("MQTT not connected – cannot send LCD message");
+      return false;
+    }
+
+    const topic = process.env.MQTT_TOPIC_LCD || "fire/device/lcd";
+    const message = JSON.stringify(command);
+
+    this.client.publish(topic, message, { qos: 1 }, (err) => {
+      if (err) {
+        console.error("Publish LCD failed:", err.message);
+      }
+    });
+
+    console.log(`Published LCD to ${topic}: ${message}`);
+    return true;
+  }
+
   // Trạng thái kết nối
   isConnected() {
     return this.connected && this.client?.connected;

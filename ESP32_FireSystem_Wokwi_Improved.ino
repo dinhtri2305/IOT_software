@@ -31,6 +31,7 @@
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
 
+String lcd_display = "";
 const char *mqtt_broker = "broker.hivemq.com";
 const int mqtt_port = 1883;
 
@@ -38,6 +39,7 @@ const char *mqtt_client_id = "ESP32_FireSystem_Wokwi";
 const char *topic_sensor = "fire/sensor/data";
 const char *topic_control = "fire/device/control";
 const char *topic_status = "fire/device/status"; // ✅ Gửi trạng thái về backend
+const char *topic_lcd = "fire/device/lcd"; // Nội dung LCD được hiện thị
 
 /* ================== OBJECT ================== */
 WiFiClient espClient;
@@ -150,6 +152,14 @@ void callback(char *topic, byte *payload, unsigned int length)
     // ✅ Gửi trạng thái về backend sau khi nhận lệnh
     sendDeviceStatus();
   }
+
+  // Nếu payload có trường lcdMessage thì hiển thị lên LCD
+  if (doc.containsKey("lcdMessage")) {
+    String lcdMsg = doc["lcdMessage"].as<String>();
+    Serial.println("LCD message: " + lcdMsg);
+    
+    lcd_display = lcdMsg;
+  }
 }
 
 /* ================== MQTT CONNECT ================== */
@@ -161,8 +171,10 @@ void connectMQTT()
     if (client.connect(mqtt_client_id))
     {
       Serial.println("OK");
-      client.subscribe(topic_control);
-      Serial.println("Subscribed to: " + String(topic_control));
+        // Subscribe to control and lcd topics so device can receive both commands and LCD messages
+        client.subscribe(topic_control);
+        client.subscribe(topic_lcd);
+        Serial.println("Subscribed to: " + String(topic_control) + ", " + String(topic_lcd));
 
       // ✅ Gửi trạng thái ban đầu khi kết nối
       sendDeviceStatus();
@@ -402,7 +414,7 @@ void loop()
   if (fireDetected)
   {
     lcd.setCursor(0, 0);
-    lcd.print("🔥 CANH BAO CHAY");
+    lcd.print("CANH BAO CHAY");
     lcd.setCursor(0, 1);
     lcd.print("Gas:");
     lcd.print(gasV, 1);
@@ -410,6 +422,26 @@ void loop()
   }
   else
   {
+    if (lcd_display) {
+      int commaIndex = lcd_display.indexOf(',');
+
+      String line1 = lcd_display.substring(0, commaIndex);
+      String line2 = lcd_display.substring(commaIndex + 2);
+
+      lcd.setCursor(0, 0);
+      lcd.print(line1);
+
+      lcd.setCursor(0, 1);
+      lcd.print(line2);  
+
+      // Reset lại
+      lcd_display = "";
+      
+      delay(5000);
+    }
+
+    lcd.clear();
+
     lcd.setCursor(0, 0);
     lcd.print("T:");
     lcd.print(temperature, 1);

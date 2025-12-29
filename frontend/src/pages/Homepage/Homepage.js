@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { useAuth } from "../../utils/AuthContext";
 
 import ChatbotComponent from "./components/Chatbot";
@@ -15,6 +16,40 @@ const Homepage = () => {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview"); // tổng quan mặc định
   const { userInfo, logout, token } = useAuth();
+
+  // Gửi LCD message với ngày tháng năm mỗi phút 1 lần
+  useEffect(() => {
+    const sendLCDDate = async () => {
+      if (!token) return;
+      try {
+        const now = new Date();
+        const time = now.toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        const lcdMessage = String(`Welcome back!, ${time}`);
+        
+        axios.post(
+          "http://localhost:3000/api/device/control/lcd",
+          { deviceId: "ESP32_001", lcdMessage },
+          { headers: { Authorization: `Bearer ${token}` } }
+        ).catch((err) => {
+          console.warn("Failed to send LCD date:", err?.message || err);
+        });
+      } catch (err) {
+        console.warn("LCD date send error:", err.message || err);
+      }
+    };
+
+    if (token) {
+      // Gửi ngay lần đầu
+      sendLCDDate();
+      // Sau đó gửi mỗi phút 1 lần
+      const interval = setInterval(sendLCDDate, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [token]);
 
   return (
     <div className="app-shell">

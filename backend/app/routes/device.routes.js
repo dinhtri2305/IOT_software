@@ -10,6 +10,7 @@ router.use(protect);
 router.post("/control/relay", deviceController.controlRelay);
 router.post("/control/buzzer", deviceController.controlBuzzer);
 router.post("/control/led", deviceController.controlLED);
+router.post("/control/lcd", deviceController.controlLCD);
 router.post("/control/all", deviceController.controlAll);
 
 // Emergency and test

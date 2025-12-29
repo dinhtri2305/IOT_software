@@ -235,4 +235,29 @@ exports.rebootDevice = async (req, res) => {
   });
 };
 
+// Send LCD message to device via MQTT
+exports.controlLCD = async (req, res) => {
+  const { lcdMessage, deviceId } = req.body;
+  if (!lcdMessage || typeof lcdMessage !== "string") {
+    return res.status(400).json({
+      success: false,
+      message: "lcdMessage (string) is required",
+    });
+  }
+
+  // Prepare payload and publish to dedicated LCD topic via mqttHandler
+  const payload = {
+    deviceId: deviceId || "ESP32_001",
+    timestamp: new Date().toISOString(),
+    lcdMessage,
+  };
+
+  const success = mqttHandler.publishLCD(payload);
+
+  res.json({
+    success,
+    message: success ? "LCD message sent" : "MQTT not connected",
+  });
+};
+
 module.exports = exports;
