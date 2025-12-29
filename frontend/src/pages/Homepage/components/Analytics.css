@@ -60,7 +60,8 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .analytics-section {
@@ -92,6 +93,8 @@
 /* Temperature vs Humidity Chart (B1) */
 .temp-humidity-chart {
   min-height: 500px;
+  height: 500px;
+  position: relative;
 }
 
 .analytics-right .analytics-chart-title {
