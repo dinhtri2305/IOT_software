@@ -5,6 +5,7 @@ import {
   Scatter,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   Legend,
@@ -43,13 +44,23 @@ const Analytics = ({ authToken }) => {
       if (tempHumidResponse.data.success) {
         const dataPoints = tempHumidResponse.data.dataPoints || [];
         const formattedData = dataPoints
-          .filter((d) => d.humidity != null && d.temperature != null &&
-            !isNaN(d.humidity) && !isNaN(d.temperature) &&
-            d.humidity >= 0 && d.temperature >= 0)
+          .filter(
+            (d) =>
+              d.humidity != null &&
+              d.temperature != null &&
+              !isNaN(d.humidity) &&
+              !isNaN(d.temperature) &&
+              d.humidity >= 0 &&
+              d.temperature >= 0
+          )
           .map((d, idx) => ({
             id: idx + 1,
             humidity: Number(Math.round(d.humidity * 10) / 10),
             temperature: Number(Math.round(d.temperature * 10) / 10),
+            size: Math.max(
+              60,
+              Math.min(400, (d.temperature || 0) + (d.humidity || 0))
+            ),
             label:
               d.timestamp &&
               new Date(d.timestamp).toLocaleString("vi-VN", {
@@ -63,8 +74,8 @@ const Analytics = ({ authToken }) => {
         console.log("Formatted scatter data:", formattedData);
         console.log("Data count:", formattedData.length);
         if (formattedData.length > 0) {
-          const humids = formattedData.map(d => d.humidity);
-          const temps = formattedData.map(d => d.temperature);
+          const humids = formattedData.map((d) => d.humidity);
+          const temps = formattedData.map((d) => d.temperature);
           const minHumid = Math.min(...humids);
           const maxHumid = Math.max(...humids);
           const minTemp = Math.min(...temps);
@@ -78,23 +89,27 @@ const Analytics = ({ authToken }) => {
           const tempRange = maxTemp - minTemp;
 
           // Handle case where all values are the same
-          const xPadding = humidRange === 0 ? 10 : Math.max(humidRange * 0.1, 5);
+          const xPadding =
+            humidRange === 0 ? 10 : Math.max(humidRange * 0.1, 5);
           const yPadding = tempRange === 0 ? 10 : Math.max(tempRange * 0.1, 5);
 
           const xDomain = [
             Math.max(0, minHumid - xPadding),
-            maxHumid + xPadding
+            maxHumid + xPadding,
           ];
-          const yDomain = [
-            Math.max(0, minTemp - yPadding),
-            maxTemp + yPadding
-          ];
+          const yDomain = [Math.max(0, minTemp - yPadding), maxTemp + yPadding];
 
           // Ensure domain values are valid numbers
-          if (!isNaN(xDomain[0]) && !isNaN(xDomain[1]) &&
-            !isNaN(yDomain[0]) && !isNaN(yDomain[1]) &&
-            isFinite(xDomain[0]) && isFinite(xDomain[1]) &&
-            isFinite(yDomain[0]) && isFinite(yDomain[1])) {
+          if (
+            !isNaN(xDomain[0]) &&
+            !isNaN(xDomain[1]) &&
+            !isNaN(yDomain[0]) &&
+            !isNaN(yDomain[1]) &&
+            isFinite(xDomain[0]) &&
+            isFinite(xDomain[1]) &&
+            isFinite(yDomain[0]) &&
+            isFinite(yDomain[1])
+          ) {
             console.log("X Domain:", xDomain);
             console.log("Y Domain:", yDomain);
             // Set domain and data together
@@ -164,7 +179,9 @@ const Analytics = ({ authToken }) => {
               {tempHumidityData.length === 0 ? (
                 <div className="analytics-empty">Chưa có dữ liệu</div>
               ) : (
-                <div style={{ width: "100%", height: "500px", minHeight: "500px" }}>
+                <div
+                  style={{ width: "100%", height: "500px", minHeight: "500px" }}
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart
                       margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
@@ -177,7 +194,11 @@ const Analytics = ({ authToken }) => {
                         type="number"
                         stroke="#4a90e2"
                         domain={domainConfig.x}
-                        label={{ value: "Độ ẩm (%)", position: "insideBottom", offset: -5 }}
+                        label={{
+                          value: "Độ ẩm (%)",
+                          position: "insideBottom",
+                          offset: -5,
+                        }}
                       />
                       <YAxis
                         dataKey="temperature"
@@ -186,7 +207,17 @@ const Analytics = ({ authToken }) => {
                         type="number"
                         stroke="#ff7a00"
                         domain={domainConfig.y}
-                        label={{ value: "Nhiệt độ (°C)", angle: -90, position: "insideLeft" }}
+                        label={{
+                          value: "Nhiệt độ (°C)",
+                          angle: -90,
+                          position: "insideLeft",
+                        }}
+                      />
+                      <ZAxis
+                        dataKey="size"
+                        range={[80, 400]}
+                        name="Kích thước"
+                        unit=""
                       />
                       <Tooltip
                         cursor={{ strokeDasharray: "3 3" }}
@@ -195,6 +226,8 @@ const Analytics = ({ authToken }) => {
                             return [`${value}°C`, "Nhiệt độ"];
                           } else if (name === "humidity") {
                             return [`${value}%`, "Độ ẩm"];
+                          } else if (name === "size") {
+                            return [value, "Kích thước"];
                           }
                           return [value, name];
                         }}
@@ -238,9 +271,7 @@ const Analytics = ({ authToken }) => {
                 className="prediction-icon"
               />
               <div className="prediction-value-display">
-                {predictedTemp.length > 0
-                  ? `${predictedTemp[0].value}`
-                  : "N/A"}
+                {predictedTemp.length > 0 ? `${predictedTemp[0].value}` : "N/A"}
               </div>
             </div>
           </div>
