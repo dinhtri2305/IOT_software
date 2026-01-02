@@ -59,9 +59,9 @@ class MQTTHandler {
       let payload;
       try {
         payload = JSON.parse(message.toString());
-        console.log(`📦 Parsed payload:`, JSON.stringify(payload, null, 2));
+        console.log(`Parsed payload:`, JSON.stringify(payload, null, 2));
       } catch (err) {
-        console.warn("❌ Invalid JSON received on", topic, message.toString());
+        console.warn("Invalid JSON received on", topic, message.toString());
         return;
       }
 
@@ -75,14 +75,14 @@ class MQTTHandler {
         if (topic === process.env.MQTT_TOPIC_SENSOR) {
           await this.handleSensorData(payload);
         } else if (topic === process.env.MQTT_TOPIC_STATUS) {
-          console.log(`✅ Processing device status from topic: ${topic}`);
+          console.log(`Processing device status from topic: ${topic}`);
           await this.handleDeviceStatus(payload);
         } else {
-          console.warn(`⚠️ Unknown topic received: ${topic}`);
+          console.warn(`Unknown topic received: ${topic}`);
           console.warn(`   Expected: ${process.env.MQTT_TOPIC_SENSOR} or ${process.env.MQTT_TOPIC_STATUS}`);
         }
       } catch (err) {
-        console.error("❌ Handler error:", err);
+        console.error("Handler error:", err);
       }
     });
 
@@ -158,7 +158,7 @@ class MQTTHandler {
     if (!data?.deviceId) return;
 
     try {
-      // ✅ Cập nhật heartbeat
+      // Cập nhật heartbeat
       await Device.heartbeat(data.deviceId, {
         ipAddress: data.ipAddress,
         signalStrength: data.signalStrength,
@@ -166,7 +166,7 @@ class MQTTHandler {
         firmwareVersion: data.firmwareVersion,
       });
 
-      // ✅ Cập nhật trạng thái relay/buzzer/led nếu có
+      //Cập nhật trạng thái relay/buzzer/led nếu có
       const device = await Device.findOne({ deviceId: data.deviceId });
       if (device) {
         const updates = {};
@@ -190,14 +190,14 @@ class MQTTHandler {
             { $set: updates },
             { new: true }
           );
-          console.log(`✅ Device ${data.deviceId} status updated:`, updates);
-          console.log(`📊 Current device state:`, {
+          console.log(`Device ${data.deviceId} status updated:`, updates);
+          console.log(`Current device state:`, {
             relay: updated.relay?.status,
             buzzer: updated.buzzer?.status,
             led: updated.led?.status,
           });
         } else {
-          console.log(`ℹ️ No status updates needed for device ${data.deviceId}`);
+          console.log(`No status updates needed for device ${data.deviceId}`);
         }
       }
 
@@ -210,7 +210,7 @@ class MQTTHandler {
   // Gửi lệnh điều khiển (relay, buzzer, led)
   publishControl(command) {
     if (!this.connected || !this.client) {
-      console.error("MQTT not connected – cannot send control");
+      console.error("MQTT not connected, cannot send control");
       return false;
     }
 
