@@ -11,8 +11,9 @@ class MQTTHandler {
   }
 
   connect() {
-    const brokerUrl = `mqtt://${process.env.MQTT_BROKER || "broker.hivemq.com"
-      }:${process.env.MQTT_PORT || 1883}`;
+    const brokerUrl = `mqtt://${
+      process.env.MQTT_BROKER || "broker.hivemq.com"
+    }:${process.env.MQTT_PORT || 1883}`;
     const options = {
       clientId: `backend_${Date.now()}_${Math.random()
         .toString(16)
@@ -49,13 +50,13 @@ class MQTTHandler {
     });
 
     this.client.on("message", async (topic, message) => {
-      console.log(`\n📨 MQTT Message received on topic: "${topic}"`);
-      console.log(`📋 Expected topics:`, {
+      console.log(`\n MQTT Message received on topic: "${topic}"`);
+      console.log(` Expected topics:`, {
         sensor: process.env.MQTT_TOPIC_SENSOR,
         status: process.env.MQTT_TOPIC_STATUS,
         control: process.env.MQTT_TOPIC_CONTROL,
       });
-      
+
       let payload;
       try {
         payload = JSON.parse(message.toString());
@@ -79,7 +80,9 @@ class MQTTHandler {
           await this.handleDeviceStatus(payload);
         } else {
           console.warn(`Unknown topic received: ${topic}`);
-          console.warn(`   Expected: ${process.env.MQTT_TOPIC_SENSOR} or ${process.env.MQTT_TOPIC_STATUS}`);
+          console.warn(
+            `   Expected: ${process.env.MQTT_TOPIC_SENSOR} or ${process.env.MQTT_TOPIC_STATUS}`
+          );
         }
       } catch (err) {
         console.error("Handler error:", err);
@@ -132,8 +135,8 @@ class MQTTHandler {
           data.gasLevel !== undefined
             ? data.gasLevel
             : data.gasVoltage !== undefined
-              ? data.gasVoltage
-              : null,
+            ? data.gasVoltage
+            : null,
         ldrValue: data.ldrValue ?? null,
         lightLed: data.lightLed || null,
         fireDetected: Boolean(data.fireDetected),
@@ -179,7 +182,8 @@ class MQTTHandler {
           updates["buzzer.lastChanged"] = new Date();
         }
         if (data.led !== undefined) {
-          updates["led.status"] = data.led === "on" ? "on" : data.led === "blink" ? "blink" : "off";
+          updates["led.status"] =
+            data.led === "on" ? "on" : data.led === "blink" ? "blink" : "off";
           updates["led.lastChanged"] = new Date();
         }
 

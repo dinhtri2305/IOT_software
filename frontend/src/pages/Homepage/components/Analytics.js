@@ -33,9 +33,9 @@ const Analytics = ({ authToken }) => {
       setPredictedTemp([]);
       setPredictedHumidity([]);
 
-      // Fetch temperature-humidity correlation (10 newest points)
+      // Fetch temperature-humidity correlation (30 newest points)
       const tempHumidResponse = await axios.get(
-        "http://localhost:3000/api/analytics/temp-humidity-correlation?limit=10",
+        "http://localhost:3000/api/analytics/temp-humidity-correlation?limit=30",
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }

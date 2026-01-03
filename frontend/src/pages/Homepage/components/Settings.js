@@ -12,7 +12,7 @@ const Settings = ({ authToken }) => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [mqttConnected, setMqttConnected] = useState(false);
-  const [lastCommandTime, setLastCommandTime] = useState(0); // ✅ Track khi vừa gửi lệnh
+  const [lastCommandTime, setLastCommandTime] = useState(0); // Track khi vừa gửi lệnh
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -33,17 +33,24 @@ const Settings = ({ authToken }) => {
             return;
           }
 
-          // ✅ Backend trả về relay/buzzer/led là string trực tiếp (từ getAllStatus)
+          // Backend trả về relay/buzzer/led là string trực tiếp (từ getAllStatus)
           // Format: { relay: "on", buzzer: "off", led: "on" }
-          console.log("🔍 Raw device data from API:", JSON.stringify(device, null, 2));
+          console.log(
+            "🔍 Raw device data from API:",
+            JSON.stringify(device, null, 2)
+          );
 
           const ledStatus = device.led || "off";
           const buzzerStatus = device.buzzer || "off";
           const relayStatus = device.relay || "off";
 
-          console.log("🔍 Parsed status:", { ledStatus, buzzerStatus, relayStatus });
+          console.log("🔍 Parsed status:", {
+            ledStatus,
+            buzzerStatus,
+            relayStatus,
+          });
 
-          // ✅ Chỉ cập nhật state nếu không phải vừa gửi lệnh (tránh race condition)
+          // Chỉ cập nhật state nếu không phải vừa gửi lệnh (tránh race condition)
           // Đợi 2 giây sau khi gửi lệnh mới cập nhật từ server
           const timeSinceLastCommand = Date.now() - lastCommandTime;
           if (timeSinceLastCommand > 2000 || lastCommandTime === 0) {
@@ -51,7 +58,7 @@ const Settings = ({ authToken }) => {
             setBuzzerOn(buzzerStatus === "on");
             setRelayOn(relayStatus === "on");
 
-            console.log("✅ Device status updated from server:", {
+            console.log("Device status updated from server:", {
               ledStatus,
               buzzerStatus,
               relayStatus,
@@ -78,8 +85,8 @@ const Settings = ({ authToken }) => {
 
     if (authToken) {
       fetchStatus();
-      // ✅ Refresh trạng thái mỗi 3 giây để hiển thị realtime
-      const interval = setInterval(fetchStatus, 3000);
+      // Refresh trạng thái mỗi 60 giây để tránh quá tải
+      const interval = setInterval(fetchStatus, 60000);
       return () => clearInterval(interval);
     }
   }, [authToken]);
@@ -89,30 +96,33 @@ const Settings = ({ authToken }) => {
       setSending(true);
       setError("");
 
-      // ✅ Đánh dấu thời gian gửi lệnh để tránh bị override bởi fetchStatus
+      // Đánh dấu thời gian gửi lệnh để tránh bị override bởi fetchStatus
       setLastCommandTime(Date.now());
 
-      const response = await axios.post(`http://localhost:3000/api/device/${path}`, payload, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+      const response = await axios.post(
+        `http://localhost:3000/api/device/${path}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }
+      );
 
-      // ✅ Cập nhật state ngay lập tức khi gửi lệnh thành công
+      // Cập nhật state ngay lập tức khi gửi lệnh thành công
       const newState = payload.action === "on";
       nextStateSetter(newState);
 
-      console.log("✅ Command sent successfully:", {
+      console.log("Command sent successfully:", {
         path,
         payload,
         response: response.data,
         newState,
       });
 
-      // ✅ Đợi 1 giây rồi mới cho phép fetchStatus cập nhật lại từ server
+      // Đợi 1 giây rồi mới cho phép fetchStatus cập nhật lại từ server
       // Để đảm bảo DB đã được cập nhật
       setTimeout(() => {
         setLastCommandTime(Date.now() - 1000); // Cho phép fetchStatus cập nhật sau 1 giây
       }, 1000);
-
     } catch (err) {
       console.error("❌ Send command error", err);
       nextStateSetter(revertValue);
