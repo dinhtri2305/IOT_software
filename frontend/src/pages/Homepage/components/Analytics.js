@@ -126,9 +126,9 @@ const Analytics = ({ authToken }) => {
         }
       }
 
-      // Fetch temperature and humidity predictions
+      // Fetch temperature and humidity predictions (using 200 data points for better accuracy)
       const predictionResponse = await axios.get(
-        "http://localhost:3000/api/analytics/predict-next-day?days=3",
+        "http://localhost:3000/api/analytics/predict-next-day?days=3&limit=200",
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -137,13 +137,13 @@ const Analytics = ({ authToken }) => {
       if (predictionResponse.data.success) {
         const predictions = predictionResponse.data.predictions || [];
         setPredictedTemp(
-          predictions.slice(0, 1).map((p) => ({
+          predictions.slice(0, 200).map((p) => ({
             hour: `${p.hour}h`,
             value: Math.round(p.predictedTemperature * 10) / 10,
           }))
         );
         setPredictedHumidity(
-          predictions.slice(0, 1).map((p) => ({
+          predictions.slice(0, 200).map((p) => ({
             hour: `${p.hour}h`,
             value: Math.round(p.predictedHumidity * 10) / 10,
           }))
