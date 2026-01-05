@@ -139,8 +139,6 @@ const Overview = ({ authToken }) => {
             const formattedValue =
               value === null || value === undefined
                 ? "—"
-                : dataKey === "gasLevel"
-                ? Number(value).toFixed(0)
                 : Number(value).toFixed(1);
 
             return (
@@ -175,8 +173,6 @@ const Overview = ({ authToken }) => {
             const formattedValue =
               value === null || value === undefined
                 ? "—"
-                : dataKey === "gasLevel"
-                ? Number(value).toFixed(0)
                 : Number(value).toFixed(1);
 
             return (
