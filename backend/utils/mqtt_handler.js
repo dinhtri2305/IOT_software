@@ -153,7 +153,8 @@ class MQTTHandler {
       if (sensor.fireDetected) {
         const now = Date.now();
         const lastAlert = this.fireAlertCooldowns.get(sensor.deviceId);
-        const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
+        //const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
+        const COOLDOWN_MS = 30 * 1000;
 
         if (!lastAlert || now - lastAlert > COOLDOWN_MS) {
           console.log(
@@ -277,9 +278,7 @@ class MQTTHandler {
       );
       if (!users.length) return;
 
-      console.log(
-        `Checking alert preferences for ${users.length} users...`
-      );
+      console.log(`Checking alert preferences for ${users.length} users...`);
 
       // 2. Prepare Notification Content
       const timeString = new Date(sensor.timestamp).toLocaleString("vi-VN");
@@ -296,24 +295,14 @@ class MQTTHandler {
           </div>
           
           <div style="padding: 20px;">
-            <p>Hệ thống IoT đã nhận tín hiệu cảnh báo cháy từ thiết bị <strong>${
-              sensor.deviceId
-            }</strong>.</p>
+            <p>Hệ thống IoT đã nhận tín hiệu cảnh báo cháy từ thiết bị <strong>${sensor.deviceId}</strong>.</p>
             
             <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0;">
               <p style="margin: 5px 0;"><strong>🕒 Thời gian:</strong> ${timeString}</p>
-              <p style="margin: 5px 0;"><strong>📍 Vị trí:</strong> ${
-                sensor.location
-              }</p>
-              <p style="margin: 5px 0;"><strong>🌡️ Nhiệt độ:</strong> ${
-                sensor.temperature
-              }°C</p>
-              <p style="margin: 5px 0;"><strong>💧 Độ ẩm:</strong> ${
-                sensor.humidity
-              }%</p>
-              <p style="margin: 5px 0;"><strong>⚠️ Mức Gas:</strong> ${
-                sensor.gasLevel
-              }</p>
+              <p style="margin: 5px 0;"><strong>📍 Vị trí:</strong> ${sensor.location}</p>
+              <p style="margin: 5px 0;"><strong>🌡️ Nhiệt độ:</strong> ${sensor.temperature}°C</p>
+              <p style="margin: 5px 0;"><strong>💧 Độ ẩm:</strong> ${sensor.humidity}%</p>
+              <p style="margin: 5px 0;"><strong>⚠️ Mức Gas:</strong> ${sensor.gasLevel}</p>
             </div>
             <p><a href="${googleMapsLink}">Xem vị trí trên bản đồ</a></p>
           </div>
@@ -343,38 +332,42 @@ class MQTTHandler {
       // Read from .env so code is clean and team members can set their own ID
       const demoChatId = process.env.DEMO_CHAT_ID;
       if (demoChatId) {
-            telegramBot.sendTelegramAlert(demoChatId, telegramMessage)
-              .then(() => console.log(`🔔 (Demo) Sent Telegram to ID: ${demoChatId}`))
-              .catch(e => console.error("Telegram Error:", e.message));
+        telegramBot
+          .sendTelegramAlert(demoChatId, telegramMessage)
+          .then(() =>
+            console.log(`🔔 (Demo) Sent Telegram to ID: ${demoChatId}`)
+          )
+          .catch((e) => console.error("Telegram Error:", e.message));
       }
 
       for (const user of users) {
         // 1. ALWAYS SEND EMAIL (Official record)
         sendEmail({
-            to: user.email,
-            subject: `🔥 CẢNH BÁO CHÁY KHẨN CẤP - ${sensor.deviceId}`,
-            html: htmlContent,
-          })
-            .then(() =>
-              console.log(`📧 Sent Email alert to user: ${user.name} (${user.email})`)
+          to: user.email,
+          subject: `🔥 CẢNH BÁO CHÁY KHẨN CẤP - ${sensor.deviceId}`,
+          html: htmlContent,
+        })
+          .then(() =>
+            console.log(
+              `📧 Sent Email alert to user: ${user.name} (${user.email})`
             )
-            .catch((err) =>
-              console.error(
-                `❌ Failed to send email to ${user.email}:`,
-                err.message
-              )
-            );
+          )
+          .catch((err) =>
+            console.error(
+              `❌ Failed to send email to ${user.email}:`,
+              err.message
+            )
+          );
 
         // 2. SEND TELEGRAM IF AVAILABLE (Instant alert)
         // --- REAL USER LOGIC ---
         // Only send if the user has a ChatID AND it's different from the demo ID (to avoid double send if you are also in the DB)
         if (user.telegramChatId && user.telegramChatId !== demoChatId) {
-          telegramBot.sendTelegramAlert(
-            user.telegramChatId,
-            telegramMessage
-          ).then(() => 
-            console.log(`🔔 Sent Telegram alert to user: ${user.name}`)
-          );
+          telegramBot
+            .sendTelegramAlert(user.telegramChatId, telegramMessage)
+            .then(() =>
+              console.log(`🔔 Sent Telegram alert to user: ${user.name}`)
+            );
         }
       }
     } catch (err) {

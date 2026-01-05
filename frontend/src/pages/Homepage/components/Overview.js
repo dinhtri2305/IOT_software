@@ -29,18 +29,18 @@ const Overview = ({ authToken }) => {
           const latestFire = list.find((item) => item.fireDetected);
           if (latestFire) {
             const fireTime = new Date(latestFire.timestamp).getTime();
-            
+
             if (fireTime > lastDataTimeRef.current) {
               lastDataTimeRef.current = fireTime;
 
               const now = Date.now();
               const COOLDOWN = 15 * 60 * 1000;
-              
+
               if (now - lastEmailSentRef.current > COOLDOWN) {
-                  console.warn("✅ Email sent (Notification triggered)");
-                  lastEmailSentRef.current = now;
+                console.warn("✅ Email sent (Notification triggered)");
+                lastEmailSentRef.current = now;
               } else {
-                  console.log("⚠️ Fire detected (Email cooldown active)");
+                console.log("⚠️ Fire detected (Email cooldown active)");
               }
             }
           }
@@ -62,7 +62,7 @@ const Overview = ({ authToken }) => {
 
     if (authToken) {
       fetchSensorData();
-      const interval = setInterval(fetchSensorData, 5000);
+      const interval = setInterval(fetchSensorData, 60 * 1000);
       return () => clearInterval(interval);
     }
   }, [authToken]);
@@ -139,8 +139,6 @@ const Overview = ({ authToken }) => {
             const formattedValue =
               value === null || value === undefined
                 ? "—"
-                : dataKey === "gasLevel"
-                ? Number(value).toFixed(0)
                 : Number(value).toFixed(1);
 
             return (
@@ -175,8 +173,6 @@ const Overview = ({ authToken }) => {
             const formattedValue =
               value === null || value === undefined
                 ? "—"
-                : dataKey === "gasLevel"
-                ? Number(value).toFixed(0)
                 : Number(value).toFixed(1);
 
             return (
