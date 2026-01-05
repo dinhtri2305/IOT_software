@@ -14,9 +14,9 @@
 
 .overview-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: stretch;
+  grid-template-columns: 2fr 1fr;
+  gap: 50px;
+  align-items: start;
 }
 
 .overview-left {
@@ -145,28 +145,6 @@
   font-weight: 700;
   color: #111827;
   text-align: right;
-}
-
-/* ========================================
-   LAYOUT
-   ======================================== */
-
-.overview-layout {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.overview-left {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 16px;
-}
-
-.overview-right {
-  display: flex;
-  flex-direction: column;
 }
 
 .metric-card {

@@ -184,7 +184,7 @@ const Analytics = ({ authToken }) => {
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart
-                      margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                      margin={{ top: 20, right: 20, left: 20, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                       <XAxis
@@ -241,7 +241,7 @@ const Analytics = ({ authToken }) => {
                           return "Điểm đo";
                         }}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ paddingTop: "20px" }} />
                       <Scatter
                         name="Điểm đo"
                         data={tempHumidityData}

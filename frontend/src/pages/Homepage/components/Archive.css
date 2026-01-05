@@ -2,6 +2,7 @@
   width: 100%;
   height: 100%;
   padding: 24px;
+  padding-top: 10px;
   background: none;
   display: flex;
   flex-direction: column;
@@ -16,23 +17,24 @@
 
 .archive-refresh {
   padding: 8px 14px;
-  background: #bccbff;
+  background: #fb8469;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-family: "Inter", sans-serif;
   transition: opacity 0.2s ease;
+  margin-bottom: 10px;
 }
 
 .archive-refresh:hover {
-  opacity: 0.9;
+  opacity: 0.75;
 }
 
 .archive-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 45px;
   align-items: start;
 }
 
@@ -44,11 +46,12 @@
 
 .archive-title {
   text-align: center;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   font-family: "Inter", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 5px;
 }
 
 .archive-table {
@@ -56,17 +59,18 @@
   display: flex;
   border-radius: 5px;
   flex-direction: column;
+  text-align: center;
 }
 
 .archive-row {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1fr 1fr;
 }
 
 .archive-cell {
   padding: 10px 12px;
   border-bottom: 1px solid #e6e6e6;
-  font-size: 13px;
+  font-size: 14px;
   font-family: "Inter", sans-serif;
   word-wrap: break-word;
   overflow-wrap: break-word;
