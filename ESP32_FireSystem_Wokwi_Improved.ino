@@ -15,19 +15,19 @@
 #define BUZZER_PIN 27
 #define RELAY_PIN 26
 #define LED_ALERT_PIN 25
-#define LED_LIGHT_PIN 33 //LED chiếu sáng tự động
+#define LED_LIGHT_PIN 33 // LED chiếu sáng tự động
 
 // MQ2 CHIA ÁP
 #define Rt 33000.0
 #define Rb 47000.0
 #define VREF 3.3
 
-//NGƯỠNG 
+// NGƯỠNG
 #define FIRE_SMOKE_VOUT 3.4
 #define FIRE_TEMP 60.0
 #define LDR_DARK_THRESHOLD 2000 // < là tối
 
-//WIFI & MQTT
+// WIFI & MQTT
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
 
@@ -38,25 +38,27 @@ const int mqtt_port = 1883;
 const char *mqtt_client_id = "ESP32_FireSystem_Wokwi";
 const char *topic_sensor = "fire/sensor/data";
 const char *topic_control = "fire/device/control";
-const char *topic_status = "fire/device/status"; //Gửi trạng thái về backend
-const char *topic_lcd = "fire/device/lcd"; // Nội dung LCD được hiện thị
+const char *topic_status = "fire/device/status"; // Gửi trạng thái về backend
+const char *topic_lcd = "fire/device/lcd";       // Nội dung LCD được hiện thị
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 DHT dht(DHTPIN, DHTTYPE);
 
-//Trạng thái
+// Trạng thái
 bool relayState = false;
 bool buzzerState = false;
 bool alertLedState = false;
-bool emergencyMode = false;  //Chế độ khẩn cấp (tự động khi phát hiện cháy)
-bool manualOverride = false; //Cho phép điều khiển thủ công ngay cả khi cháy
+bool emergencyMode = false;  // Chế độ khẩn cấp (tự động khi phát hiện cháy)
+bool manualOverride = false; // Cho phép điều khiển thủ công ngay cả khi cháy
 
 unsigned long lastStatusSend = 0;
-const unsigned long STATUS_INTERVAL = 10000; //Gửi trạng thái mỗi 10 giây
+const unsigned long STATUS_INTERVAL = 10000; // Gửi trạng thái mỗi 10 giây
+unsigned long lastSensorSend = 0;
+const unsigned long SENSOR_INTERVAL = 60000; // Gửi dữ liệu cảm biến mỗi 60 giây
 
-//MQTT CALLBACK
+// MQTT CALLBACK
 void callback(char *topic, byte *payload, unsigned int length)
 {
   String msg;
@@ -72,7 +74,7 @@ void callback(char *topic, byte *payload, unsigned int length)
     return;
   }
 
-  //Kiểm tra deviceId (nếu có)
+  // Kiểm tra deviceId (nếu có)
   if (doc.containsKey("deviceId"))
   {
     String receivedDeviceId = doc["deviceId"].as<String>();
@@ -83,11 +85,11 @@ void callback(char *topic, byte *payload, unsigned int length)
     }
   }
 
-  //Xử lý lệnh emergency stop
+  // Xử lý lệnh emergency stop
   if (doc.containsKey("emergency") && doc["emergency"] == true)
   {
-    emergencyMode = false;  //Tắt chế độ khẩn cấp
-    manualOverride = false; //Reset manual override
+    emergencyMode = false;  // Tắt chế độ khẩn cấp
+    manualOverride = false; // Reset manual override
     relayState = false;
     buzzerState = false;
     alertLedState = false;
@@ -95,16 +97,16 @@ void callback(char *topic, byte *payload, unsigned int length)
     digitalWrite(BUZZER_PIN, LOW);
     digitalWrite(LED_ALERT_PIN, LOW);
     Serial.println("Emergency stop - All devices OFF, auto mode restored");
-    sendDeviceStatus(); //Gửi trạng thái ngay
+    sendDeviceStatus(); // Gửi trạng thái ngay
     return;
   }
 
-  //Xử lý lệnh điều khiển từ web, cho phép manual override
+  // Xử lý lệnh điều khiển từ web, cho phép manual override
   bool hasControlCommand = doc.containsKey("relay") || doc.containsKey("buzzer") || doc.containsKey("led");
 
   if (hasControlCommand)
   {
-    //Bất kỳ lệnh điều khiển nào cũng kích hoạt manual override
+    // Bất kỳ lệnh điều khiển nào cũng kích hoạt manual override
     manualOverride = true;
 
     if (doc.containsKey("relay"))
@@ -148,15 +150,16 @@ void callback(char *topic, byte *payload, unsigned int length)
       Serial.println("Manual override active - User control priority over fire detection");
     }
 
-    //Gửi trạng thái về backend sau khi nhận lệnh
+    // Gửi trạng thái về backend sau khi nhận lệnh
     sendDeviceStatus();
   }
 
   // Nếu payload có trường lcdMessage thì hiển thị lên LCD
-  if (doc.containsKey("lcdMessage")) {
+  if (doc.containsKey("lcdMessage"))
+  {
     String lcdMsg = doc["lcdMessage"].as<String>();
     Serial.println("LCD message: " + lcdMsg);
-    
+
     lcd_display = lcdMsg;
   }
 }
@@ -174,7 +177,7 @@ void connectMQTT()
       client.subscribe(topic_lcd);
       Serial.println("Subscribed to: " + String(topic_control));
 
-      //Gửi trạng thái ban đầu khi kết nối
+      // Gửi trạng thái ban đầu khi kết nối
       sendDeviceStatus();
     }
     else
@@ -187,7 +190,7 @@ void connectMQTT()
   }
 }
 
-//GỬI DỮ LIỆU CẢM BIẾN
+// GỬI DỮ LIỆU CẢM BIẾN
 void sendSensorData(float temp, float hum, float gasV,
                     int ldrValue, bool fire)
 {
@@ -197,8 +200,8 @@ void sendSensorData(float temp, float hum, float gasV,
   doc["deviceId"] = "ESP32_001";
   doc["temperature"] = temp;
   doc["humidity"] = hum;
-  doc["gasVoltage"] = gasV; //Backend hỗ trợ cả gasVoltage và gasLevel
-  doc["gasLevel"] = gasV; 
+  doc["gasVoltage"] = gasV; // Backend hỗ trợ cả gasVoltage và gasLevel
+  doc["gasLevel"] = gasV;
   doc["ldrValue"] = ldrValue;
   doc["lightLed"] = digitalRead(LED_LIGHT_PIN) ? "on" : "off";
   doc["fireDetected"] = fire;
@@ -309,14 +312,14 @@ void setup()
 /* ================== LOOP ================== */
 void loop()
 {
-  //Duy trì kết nối MQTT
+  // Duy trì kết nối MQTT
   if (!client.connected())
   {
     connectMQTT();
   }
   client.loop();
 
-  //ĐỌC CẢM BIẾN
+  // ĐỌC CẢM BIẾN
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
   if (isnan(temperature))
@@ -331,24 +334,24 @@ void loop()
   bool isDark = ldrValue < LDR_DARK_THRESHOLD;
 
   bool fireByTemp = temperature > FIRE_TEMP;
-  bool fireByGas  = gasV > FIRE_SMOKE_VOUT;
+  bool fireByGas = gasV > FIRE_SMOKE_VOUT;
   bool fireDetected = fireByTemp || fireByGas;
 
-  //ĐÈN CHIẾU SÁNG AUTO
+  // ĐÈN CHIẾU SÁNG AUTO
   digitalWrite(LED_LIGHT_PIN, isDark ? HIGH : LOW);
 
-  //XỬ LÝ CHÁY
+  // XỬ LÝ CHÁY
   if (fireDetected)
   {
     if (!emergencyMode)
     {
-      //Phát hiện cháy MỚI → reset manual override, quay về chế độ tự động
+      // Phát hiện cháy MỚI → reset manual override, quay về chế độ tự động
       emergencyMode = true;
       manualOverride = false;
       Serial.println("FIRE DETECTED - EMERGENCY MODE ACTIVATED (Auto control)");
     }
 
-    //Nếu KHÔNG có manual override → tự động bật tất cả
+    // Nếu KHÔNG có manual override → tự động bật tất cả
     if (!manualOverride)
     {
       relayState = true;
@@ -360,7 +363,7 @@ void loop()
     }
     else
     {
-      //Có manual override → giữ nguyên trạng thái người dùng đã chọn
+      // Có manual override → giữ nguyên trạng thái người dùng đã chọn
       digitalWrite(BUZZER_PIN, buzzerState ? HIGH : LOW);
       digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
       digitalWrite(LED_ALERT_PIN, alertLedState ? HIGH : LOW);
@@ -368,13 +371,13 @@ void loop()
   }
   else
   {
-    //Hết cháy → tắt chế độ khẩn cấp
+    // Hết cháy → tắt chế độ khẩn cấp
     if (emergencyMode)
     {
       emergencyMode = false;
       Serial.println("Fire cleared - Emergency mode deactivated");
 
-      //Nếu KHÔNG có manual override → tự động tắt hết
+      // Nếu KHÔNG có manual override → tự động tắt hết
       if (!manualOverride)
       {
         relayState = false;
@@ -388,21 +391,25 @@ void loop()
       }
     }
 
-    //Áp dụng trạng thái hiện tại
+    // Áp dụng trạng thái hiện tại
     digitalWrite(BUZZER_PIN, buzzerState ? HIGH : LOW);
     digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
     digitalWrite(LED_ALERT_PIN, alertLedState ? HIGH : LOW);
   }
 
-  //GỬI DỮ LIỆU CẢM BIẾN MQTT
-  sendSensorData(
-      temperature,
-      humidity,
-      gasV,
-      ldrValue,
-      fireDetected);
+  // GỬI DỮ LIỆU CẢM BIẾN MQTT
+  if (millis() - lastSensorSend >= SENSOR_INTERVAL)
+  {
+    sendSensorData(
+        temperature,
+        humidity,
+        gasV,
+        ldrValue,
+        fireDetected);
+    lastSensorSend = millis();
+  }
 
-  //GỬI TRẠNG THÁI THIẾT BỊ ĐỊNH KỲ
+  // GỬI TRẠNG THÁI THIẾT BỊ ĐỊNH KỲ
   if (millis() - lastStatusSend > STATUS_INTERVAL)
   {
     sendDeviceStatus();
@@ -443,7 +450,8 @@ void loop()
   }
   else
   {
-    if (lcd_display.length() > 0) {
+    if (lcd_display.length() > 0)
+    {
       int commaIndex = lcd_display.indexOf(',');
 
       String line1 = lcd_display.substring(0, commaIndex);
@@ -453,11 +461,11 @@ void loop()
       lcd.print(line1);
 
       lcd.setCursor(0, 1);
-      lcd.print(line2);  
+      lcd.print(line2);
 
       // Reset lại
       lcd_display = "";
-      
+
       delay(4000);
       return;
     }
