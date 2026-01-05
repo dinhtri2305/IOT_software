@@ -2,12 +2,15 @@
 const mqtt = require("mqtt");
 const SensorData = require("../app/models/sensor.model");
 const Device = require("../app/models/device.model");
+const User = require("../app/models/user.model");
+const sendEmail = require("./sendEmail");
 
 class MQTTHandler {
   constructor() {
     this.client = null;
     this.connected = false;
     this.messageCount = 0; // Counter for received messages
+    this.fireAlertCooldowns = new Map(); // Store last alert time per device
   }
 
   connect() {
@@ -148,8 +151,23 @@ class MQTTHandler {
       console.log("Sensor data saved");
 
       if (sensor.fireDetected) {
-        console.log("FIRE ALERT FROM", sensor.deviceId || "unknown device");
-        // TODO: Gửi Telegram, Push Notification, Email...
+        const now = Date.now();
+        const lastAlert = this.fireAlertCooldowns.get(sensor.deviceId);
+        const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
+
+        if (!lastAlert || now - lastAlert > COOLDOWN_MS) {
+          console.log(
+            `🔥 FIRE DETECTED on ${sensor.deviceId}. Sending alerts...`
+          );
+          this.sendGlobalFireAlert(sensor);
+          this.fireAlertCooldowns.set(sensor.deviceId, now);
+        } else {
+          console.log(
+            `🔥 Fire on ${sensor.deviceId} - In cooldown (${Math.round(
+              (COOLDOWN_MS - (now - lastAlert)) / 1000
+            )}s remaining)`
+          );
+        }
       }
     } catch (err) {
       console.error("Save sensor error:", err.message);
@@ -248,6 +266,81 @@ class MQTTHandler {
 
     console.log(`Published LCD to ${topic}: ${message}`);
     return true;
+  }
+
+  // Broadcast fire alert to all users
+  async sendGlobalFireAlert(sensor) {
+    try {
+      // 1. Get all registered emails
+      const users = await User.find({}).select("email name");
+      if (!users.length) return;
+
+      const emails = users.map((u) => u.email);
+      console.log(`📧 Sending fire alert to ${emails.length} users:`, emails);
+
+      // 2. Prepare Email Content
+      const timeString = new Date(sensor.timestamp).toLocaleString("vi-VN");
+      const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        sensor.location
+      )}`;
+
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+          <div style="background-color: #d32f2f; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0; font-size: 24px;">🔥 CẢNH BÁO CHÁY! 🔥</h1>
+            <p style="margin: 5px 0 0;">Phát hiện nguy hiểm tại khu vực giám sát</p>
+          </div>
+          
+          <div style="padding: 20px;">
+            <p>Hệ thống IoT đã nhận tín hiệu cảnh báo cháy từ thiết bị <strong>${
+              sensor.deviceId
+            }</strong>.</p>
+            
+            <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0;">
+              <p style="margin: 5px 0;"><strong>🕒 Thời gian:</strong> ${timeString}</p>
+              <p style="margin: 5px 0;"><strong>📍 Vị trí:</strong> ${
+                sensor.location
+              }</p>
+              <p style="margin: 5px 0;"><strong>🌡️ Nhiệt độ:</strong> ${
+                sensor.temperature
+              }°C</p>
+              <p style="margin: 5px 0;"><strong>💧 Độ ẩm:</strong> ${
+                sensor.humidity
+              }%</p>
+              <p style="margin: 5px 0;"><strong>⚠️ Mức Gas:</strong> ${
+                sensor.gasLevel
+              }</p>
+            </div>
+          </div>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
+            <p>Đây là tin nhắn tự động từ hệ thống Fire Detection System.</p>
+          </div>
+        </div>
+      `;
+
+      // 3. Send Emails (Fire and Forget or Promise.all)
+      // Sending individually to ensure delivery or use BCC if privacy matters. 
+      // For demo, we iterate.
+      for (const user of users) {
+        sendEmail({
+          to: user.email,
+          subject: `🔥 CẢNH BÁO CHÁY KHẨN CẤP - ${sensor.deviceId}`,
+          html: htmlContent,
+        })
+          .then(() =>
+            console.log(`✅ Email sent successfully to: ${user.email}`)
+          )
+          .catch((err) =>
+            console.error(
+              `❌ Failed to send email to ${user.email}:`,
+              err.message
+            )
+          );
+      }
+    } catch (err) {
+      console.error("Error sending global fire alert:", err);
+    }
   }
 
   // Trạng thái kết nối

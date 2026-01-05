@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 import "./Overview.css";
 
@@ -7,8 +7,9 @@ const Overview = ({ authToken }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const lastDataTimeRef = useRef(0);
+  const lastEmailSentRef = useRef(0);
 
-  // Lấy dữ liệu cảm biến (lấy 5 bản ghi mới nhất)
   useEffect(() => {
     const fetchSensorData = async () => {
       try {
@@ -24,6 +25,26 @@ const Overview = ({ authToken }) => {
 
         if (response.data?.success && Array.isArray(response.data.data)) {
           const list = response.data.data.slice(0, 5);
+
+          const latestFire = list.find((item) => item.fireDetected);
+          if (latestFire) {
+            const fireTime = new Date(latestFire.timestamp).getTime();
+            
+            if (fireTime > lastDataTimeRef.current) {
+              lastDataTimeRef.current = fireTime;
+
+              const now = Date.now();
+              const COOLDOWN = 15 * 60 * 1000;
+              
+              if (now - lastEmailSentRef.current > COOLDOWN) {
+                  console.warn("✅ Email sent (Notification triggered)");
+                  lastEmailSentRef.current = now;
+              } else {
+                  console.log("⚠️ Fire detected (Email cooldown active)");
+              }
+            }
+          }
+
           setRecentData(list);
           setLastUpdate(list[0]?.timestamp || null);
           setError(null);
