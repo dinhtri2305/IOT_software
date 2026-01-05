@@ -124,6 +124,37 @@ const Overview = ({ authToken }) => {
     }
   };
 
+  const getTemperatureIcon = (temp) => {
+    if (temp === null || temp === undefined) return "sun.png";
+    const t = Number(temp);
+
+    if (t <= 0) return "snowflake.png";
+    if (t <= 20) return "cold.png";
+    if (t <= 30) return "rainbow.png";
+    if (t <= 37) return "hot.png";
+    return "fire.png";
+  };
+
+  const getHumidityScale = (humidity) => {
+    if (humidity === null || humidity === undefined) return 1;
+    const h = Number(humidity);
+    if (h < 20) return 0.2;
+    if (h < 40) return 0.4;
+    if (h < 60) return 0.6;
+    if (h < 80) return 0.8;
+    return 1;
+  };
+
+  const getGasScale = (gas) => {
+    if (gas === null || gas === undefined) return 1;
+    const g = Number(gas);
+    if (g < 4.975) return 0.5;
+    if (g < 5.16) return 0.7;
+    if (g < 5.266) return 0.9;
+    if (g < 5.37) return 1;
+    return 1.5;
+  };
+
   const renderHorizontalTable = (title, dataKey, icons) => {
     // Reverse icons array so newest data appears on the right
     const reversedIcons = [...icons].reverse();
@@ -141,13 +172,22 @@ const Overview = ({ authToken }) => {
                 ? "—"
                 : Number(value).toFixed(1);
 
+            const iconStyle =
+              dataKey === "humidity"
+                ? { transform: `scale(${getHumidityScale(value)})` }
+                : {};
+
             return (
               <div className="metric-column" key={`${dataKey}-${idx}`}>
                 <div className="metric-column__time">
                   {formatTimeShort(entry?.timestamp)}
                 </div>
                 <div className="metric-column__icon">
-                  <img src={`/assets/${iconName}`} alt={title} />
+                  <img
+                    src={`/assets/${iconName}`}
+                    alt={title}
+                    style={iconStyle}
+                  />
                 </div>
                 <div className="metric-column__value">{formattedValue}</div>
               </div>
@@ -175,13 +215,22 @@ const Overview = ({ authToken }) => {
                 ? "—"
                 : Number(value).toFixed(1);
 
+            const iconStyle =
+              dataKey === "gasLevel"
+                ? { transform: `scale(${getGasScale(value)})` }
+                : {};
+
             return (
               <div className="metric-row-vert" key={`${dataKey}-${idx}`}>
                 <div className="metric-row-vert__time">
                   {formatTimeShort(entry?.timestamp)}
                 </div>
                 <div className="metric-row-vert__icon">
-                  <img src={`/assets/${iconName}`} alt={title} />
+                  <img
+                    src={`/assets/${iconName}`}
+                    alt={title}
+                    style={iconStyle}
+                  />
                 </div>
                 <div className="metric-row-vert__value">{formattedValue}</div>
               </div>
@@ -216,15 +265,15 @@ const Overview = ({ authToken }) => {
     <div className="overview-container">
       <div className="overview-layout">
         <div className="overview-left">
-          {renderHorizontalTable("NHIỆT ĐỘ (°C)", "temperature", [
-            "sun.png",
-            "sun.png",
-            "cloudy.png",
-            "crescent-moon.png",
-            "crescent-moon.png",
-          ])}
+          {renderHorizontalTable(
+            "NHIỆT ĐỘ TRONG NGÀY (°C)",
+            "temperature",
+            [...Array(5)]
+              .map((_, i) => getTemperatureIcon(recentData[i]?.temperature))
+              .reverse()
+          )}
 
-          {renderHorizontalTable("ĐỘ ẨM (%)", "humidity", [
+          {renderHorizontalTable("ĐỘ ẨM TRONG NGÀY (%)", "humidity", [
             "drop.png",
             "drop.png",
             "drop.png",
@@ -234,7 +283,7 @@ const Overview = ({ authToken }) => {
         </div>
 
         <div className="overview-right">
-          {renderVerticalTable("NỒNG ĐỘ KHÍ GAS (PPM)", "gasLevel", [
+          {renderVerticalTable("NỒNG ĐỘ KHÍ GAS TRONG NGÀY (PPM)", "gasLevel", [
             "gas.png",
             "gas.png",
             "gas.png",
