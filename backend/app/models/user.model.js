@@ -52,6 +52,16 @@ const userSchema = new mongoose.Schema({
     select: false,
     default: null,
   },
+  // --- Notification Settings ---
+  telegramChatId: {
+    type: String,
+    default: null,
+  },
+  notificationPreference: {
+    type: String,
+    enum: ["EMAIL", "TELEGRAM"],
+    default: "EMAIL",
+  },
 });
 
 // Trong User model - thêm điều kiện để tránh hash lại

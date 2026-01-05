@@ -271,19 +271,23 @@ class MQTTHandler {
   // Broadcast fire alert to all users
   async sendGlobalFireAlert(sensor) {
     try {
-      // 1. Get all registered emails
-      const users = await User.find({}).select("email name");
+      // 1. Get all registered users with their notification settings
+      const users = await User.find({}).select(
+        "email name telegramChatId notificationPreference"
+      );
       if (!users.length) return;
 
-      const emails = users.map((u) => u.email);
-      console.log(`📧 Sending fire alert to ${emails.length} users:`, emails);
+      console.log(
+        `Checking alert preferences for ${users.length} users...`
+      );
 
-      // 2. Prepare Email Content
+      // 2. Prepare Notification Content
       const timeString = new Date(sensor.timestamp).toLocaleString("vi-VN");
       const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         sensor.location
       )}`;
 
+      // --- HTML Content for Email ---
       const htmlContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #d32f2f; color: white; padding: 20px; text-align: center;">
@@ -311,32 +315,66 @@ class MQTTHandler {
                 sensor.gasLevel
               }</p>
             </div>
-          </div>
-          
-          <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-            <p>Đây là tin nhắn tự động từ hệ thống Fire Detection System.</p>
+            <p><a href="${googleMapsLink}">Xem vị trí trên bản đồ</a></p>
           </div>
         </div>
       `;
 
-      // 3. Send Emails (Fire and Forget or Promise.all)
-      // Sending individually to ensure delivery or use BCC if privacy matters. 
-      // For demo, we iterate.
+      // --- Plain Text Content for Telegram ---
+      const telegramMessage = `
+🔥 <b>CẢNH BÁO CHÁY!</b> 🔥
+<b>Phát hiện nguy hiểm tại khu vực giám sát</b>
+
+🕒 <b>Thời gian:</b> ${timeString}
+
+📍 <b>Vị trí:</b> ${sensor.location}
+
+🌡️ <b>Nhiệt độ:</b> ${sensor.temperature}°C
+
+💧 <b>Độ ẩm:</b> ${sensor.humidity}%
+
+⚠️ <b>Mức Gas:</b> ${sensor.gasLevel}
+`;
+
+      // 3. Send Notifications based on Preference
+      const telegramBot = require("./telegramBot");
+
       for (const user of users) {
+        // 1. ALWAYS SEND EMAIL (Official record)
         sendEmail({
-          to: user.email,
-          subject: `🔥 CẢNH BÁO CHÁY KHẨN CẤP - ${sensor.deviceId}`,
-          html: htmlContent,
-        })
-          .then(() =>
-            console.log(`✅ Email sent successfully to: ${user.email}`)
-          )
-          .catch((err) =>
-            console.error(
-              `❌ Failed to send email to ${user.email}:`,
-              err.message
+            to: user.email,
+            subject: `🔥 CẢNH BÁO CHÁY KHẨN CẤP - ${sensor.deviceId}`,
+            html: htmlContent,
+          })
+            .then(() =>
+              console.log(`📧 Sent Email alert to user: ${user.name} (${user.email})`)
             )
+            .catch((err) =>
+              console.error(
+                `❌ Failed to send email to ${user.email}:`,
+                err.message
+              )
+            );
+
+        // 2. SEND TELEGRAM IF AVAILABLE (Instant alert)
+        
+        // --- DEMO OVERRIDE ---
+        const demoChatId = "8557788740";
+        if (demoChatId) {
+             telegramBot.sendTelegramAlert(demoChatId, telegramMessage)
+                .then(() => console.log(`🔔 (Demo) Sent Telegram to ID: ${demoChatId}`))
+                .catch(e => console.error("Telegram Error:", e.message));
+        }
+
+        // --- REAL USER LOGIC ---
+        if (user.telegramChatId && user.telegramChatId !== demoChatId) {
+          telegramBot.sendTelegramAlert(
+            user.telegramChatId,
+            telegramMessage
+          ).then(() => 
+            console.log(`🔔 Sent Telegram alert to user: ${user.name}`)
           );
+        }
       }
     } catch (err) {
       console.error("Error sending global fire alert:", err);
