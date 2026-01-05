@@ -339,6 +339,15 @@ class MQTTHandler {
       // 3. Send Notifications based on Preference
       const telegramBot = require("./telegramBot");
 
+      // --- DEMO OVERRIDE (Send Once) ---
+      // Read from .env so code is clean and team members can set their own ID
+      const demoChatId = process.env.DEMO_CHAT_ID;
+      if (demoChatId) {
+            telegramBot.sendTelegramAlert(demoChatId, telegramMessage)
+              .then(() => console.log(`🔔 (Demo) Sent Telegram to ID: ${demoChatId}`))
+              .catch(e => console.error("Telegram Error:", e.message));
+      }
+
       for (const user of users) {
         // 1. ALWAYS SEND EMAIL (Official record)
         sendEmail({
@@ -357,16 +366,8 @@ class MQTTHandler {
             );
 
         // 2. SEND TELEGRAM IF AVAILABLE (Instant alert)
-        
-        // --- DEMO OVERRIDE ---
-        const demoChatId = "8557788740";
-        if (demoChatId) {
-             telegramBot.sendTelegramAlert(demoChatId, telegramMessage)
-                .then(() => console.log(`🔔 (Demo) Sent Telegram to ID: ${demoChatId}`))
-                .catch(e => console.error("Telegram Error:", e.message));
-        }
-
         // --- REAL USER LOGIC ---
+        // Only send if the user has a ChatID AND it's different from the demo ID (to avoid double send if you are also in the DB)
         if (user.telegramChatId && user.telegramChatId !== demoChatId) {
           telegramBot.sendTelegramAlert(
             user.telegramChatId,
