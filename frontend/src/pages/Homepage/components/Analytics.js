@@ -126,9 +126,9 @@ const Analytics = ({ authToken }) => {
         }
       }
 
-      // Fetch temperature and humidity predictions (using 200 data points for better accuracy)
+      // Fetch temperature and humidity predictions using latest 200 points
       const predictionResponse = await axios.get(
-        "http://localhost:3000/api/analytics/predict-next-day?days=3&limit=200",
+        "http://localhost:3000/api/analytics/predict-next-day?limit=200",
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }

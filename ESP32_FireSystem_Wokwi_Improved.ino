@@ -57,6 +57,8 @@ unsigned long lastStatusSend = 0;
 const unsigned long STATUS_INTERVAL = 10000; // Gửi trạng thái mỗi 10 giây
 unsigned long lastSensorSend = 0;
 const unsigned long SENSOR_INTERVAL = 60000; // Gửi dữ liệu cảm biến mỗi 60 giây
+bool sensorReady = false;                // Chỉ gửi khi cảm biến đã sẵn sàng
+const unsigned long SENSOR_WARMUP_MS = 15000; // Thời gian đợi cảm biến ổn định
 
 // MQTT CALLBACK
 void callback(char *topic, byte *payload, unsigned int length)
@@ -397,16 +399,26 @@ void loop()
     digitalWrite(LED_ALERT_PIN, alertLedState ? HIGH : LOW);
   }
 
-  // GỬI DỮ LIỆU CẢM BIẾN MQTT
+  // GỬI DỮ LIỆU CẢM BIẾN MQTT (bỏ qua trong thời gian warmup)
+  bool warmingUp = !sensorReady && millis() < SENSOR_WARMUP_MS;
+
   if (millis() - lastSensorSend >= SENSOR_INTERVAL)
   {
-    sendSensorData(
-        temperature,
-        humidity,
-        gasV,
-        ldrValue,
-        fireDetected);
-    lastSensorSend = millis();
+    if (warmingUp)
+    {
+      Serial.println("Skip send: sensor warming up");
+    }
+    else
+    {
+      sensorReady = true;
+      sendSensorData(
+          temperature,
+          humidity,
+          gasV,
+          ldrValue,
+          fireDetected);
+      lastSensorSend = millis();
+    }
   }
 
   // GỬI TRẠNG THÁI THIẾT BỊ ĐỊNH KỲ

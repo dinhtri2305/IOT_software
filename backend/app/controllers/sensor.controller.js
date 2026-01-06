@@ -31,17 +31,26 @@ exports.receiveFromESP32 = async (req, res) => {
       gasLevel: Number(gasLevel),
     };
 
+    // Dùng messageId để chống trùng (ưu tiên timestamp từ thiết bị)
+    const rawTs = Number(timestamp);
+    const messageId = Number.isFinite(rawTs) ? rawTs : Date.now();
+    payload.messageId = messageId;
+
     // Accept device-provided fireDetected flag if present
     if (fireDetected !== undefined) payload.fireDetected = !!fireDetected;
 
-    // If device provides a numeric timestamp (e.g., epoch seconds/ms) try to use it
-    if (timestamp !== undefined && timestamp !== null) {
-      const t = Number(timestamp);
-      // If timestamp looks like seconds (<= 1e10), convert to ms
-      payload.timestamp = new Date(t > 1e10 ? t : t * 1000);
+    // If device provides a numeric timestamp, convert when plausible; else use server time
+    if (Number.isFinite(rawTs)) {
+      if (rawTs > 1e12) payload.timestamp = new Date(rawTs);
+      else if (rawTs > 1e9) payload.timestamp = new Date(rawTs * 1000);
     }
+    if (!payload.timestamp) payload.timestamp = new Date();
 
-    const record = await SensorData.create(payload);
+    const record = await SensorData.findOneAndUpdate(
+      { deviceId: payload.deviceId, messageId: payload.messageId },
+      { $set: payload },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     // Update device heartbeat
     try {

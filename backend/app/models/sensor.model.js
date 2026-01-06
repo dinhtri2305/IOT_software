@@ -55,6 +55,12 @@ const sensorDataSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Message ID để chống lưu trùng (kết hợp deviceId + messageId)
+    messageId: {
+      type: Number,
+      index: true,
+    },
+
     // ==================== THỜI GIAN ====================
     timestamp: {
       type: Date,
@@ -74,6 +80,10 @@ const sensorDataSchema = new mongoose.Schema(
 sensorDataSchema.index({ deviceId: 1, timestamp: -1 }); // Dashboard realtime
 sensorDataSchema.index({ fireDetected: 1, timestamp: -1 }); // Báo cháy nhanh
 sensorDataSchema.index({ timestamp: -1 }); // Lịch sử
+sensorDataSchema.index(
+  { deviceId: 1, messageId: 1 },
+  { unique: true, sparse: true }
+);
 
 // ==================== VIRTUAL: MỨC CẢNH BÁO ====================
 sensorDataSchema.virtual("alertLevel").get(function () {

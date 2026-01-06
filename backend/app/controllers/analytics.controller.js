@@ -45,31 +45,21 @@ class LinearRegression {
   }
 }
 
-// Get temperature vs humidity correlation
+// Get temperature vs humidity correlation (always uses latest {limit} records)
 exports.getTempHumidityCorrelation = async (req, res) => {
   try {
-    // Prefer explicit limit (latest N records). Fallback to hours window.
-    const limit = parseInt(req.query.limit, 10);
-    const hours = parseInt(req.query.hours, 10) || 32; // Default 32 hours
-    let data = [];
+    // Always rely on limit; default to 30 if missing/invalid
+    const limit = Number.isFinite(parseInt(req.query.limit, 10))
+      ? parseInt(req.query.limit, 10)
+      : 30;
 
-    if (!Number.isNaN(limit) && limit > 0) {
-      // Get latest {limit} records, then reverse to chronological order
-      data = await SensorData.find({})
-        .select("temperature humidity timestamp")
-        .sort({ timestamp: -1 })
-        .limit(limit)
-        .lean();
-      data = data.reverse();
-    } else {
-      const startTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-      data = await SensorData.find({
-        timestamp: { $gte: startTime },
-      })
-        .select("temperature humidity timestamp")
-        .sort({ timestamp: 1 })
-        .lean();
-    }
+    // Get latest {limit} records, then reverse to chronological order
+    let data = await SensorData.find({})
+      .select("temperature humidity timestamp")
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+    data = data.reverse();
 
     // Calculate correlation coefficient
     const n = data.length;
@@ -194,64 +184,36 @@ exports.getGasDistribution = async (req, res) => {
   }
 };
 
-// Predict temperature and humidity for next day using Linear Regression
+// Predict temperature and humidity for next day using latest {limit} records
 exports.predictNextDay = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7; // Use last 7 days for training
-    const startTime = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    // Always rely on the newest N records; default 200 if not provided
+    const limit = Number.isFinite(parseInt(req.query.limit, 10))
+      ? parseInt(req.query.limit, 10)
+      : 200;
 
-    // Get hourly average data
-    let data = await SensorData.aggregate([
-      { $match: { timestamp: { $gte: startTime } } },
-      {
-        $group: {
-          _id: {
-            $dateToString: {
-              format: "%Y-%m-%d %H:00",
-              date: "$timestamp",
-            },
-          },
-          avgTemp: { $avg: "$temperature" },
-          avgHumid: { $avg: "$humidity" },
-          avgGas: { $avg: "$gasLevel" },
-          timestamp: { $first: "$timestamp" },
-        },
-      },
-      { $sort: { timestamp: 1 } },
-    ]);
-
-    // Fallback: if hourly aggregation has no data, use latest 10 raw points
-    if (data.length < 1) {
-      const fallback = await SensorData.find({})
+    // Pull newest records then reverse to chronological
+    const data = (
+      await SensorData.find({})
         .select("temperature humidity timestamp")
         .sort({ timestamp: -1 })
-        .limit(10)
-        .lean();
+        .limit(limit)
+        .lean()
+    ).reverse();
 
-      if (fallback.length < 1) {
-        return res.json({
-          success: true,
-          predictions: [],
-          trainingHours: 0,
-          message: "Not enough data for prediction (need at least 1 data point)",
-        });
-      }
-
-      // Map raw points into the same shape as aggregated data
-      data = fallback
-        .reverse()
-        .map((d, idx) => ({
-          _id: `raw-${idx}`,
-          avgTemp: d.temperature,
-          avgHumid: d.humidity,
-          timestamp: d.timestamp,
-        }));
+    if (data.length < 2) {
+      return res.json({
+        success: true,
+        predictions: [],
+        trainingRecords: data.length,
+        message: "Not enough data for prediction (need at least 2 data points)",
+      });
     }
 
     // Prepare data for linear regression
     const X = data.map((_, index) => index); // Time index
-    const yTemp = data.map((d) => d.avgTemp);
-    const yHumid = data.map((d) => d.avgHumid);
+    const yTemp = data.map((d) => d.temperature);
+    const yHumid = data.map((d) => d.humidity);
 
     // Train models
     const tempModel = new LinearRegression();
@@ -271,7 +233,6 @@ exports.predictNextDay = async (req, res) => {
       let predictedHumid = humidModel.predict(nextIndex);
 
       // Handle case where all data is the same (no variation)
-      // If slope is 0 or very close to 0, use the last known value
       if (Math.abs(tempModel.slope) < 0.0001) {
         predictedTemp = yTemp[yTemp.length - 1];
       }
@@ -320,7 +281,7 @@ exports.predictNextDay = async (req, res) => {
       },
       trainingData: {
         records: data.length,
-        period: `Last ${days} days`,
+        source: `Latest ${limit} records`,
         startDate: data[0].timestamp,
         endDate: data[data.length - 1].timestamp,
       },

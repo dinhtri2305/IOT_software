@@ -11,12 +11,15 @@ class MQTTHandler {
     this.connected = false;
     this.messageCount = 0; // Counter for received messages
     this.fireAlertCooldowns = new Map(); // Store last alert time per device
+    this.lastSensorSaved = new Map(); // Track latest saved sensor ts per device
+    this.minSensorIntervalMs = Number(
+      process.env.MIN_SENSOR_INTERVAL_MS || 50000
+    ); // Dedup gap
   }
 
   connect() {
-    const brokerUrl = `mqtt://${
-      process.env.MQTT_BROKER || "broker.hivemq.com"
-    }:${process.env.MQTT_PORT || 1883}`;
+    const brokerUrl = `mqtt://${process.env.MQTT_BROKER || "broker.hivemq.com"
+      }:${process.env.MQTT_PORT || 1883}`;
     const options = {
       clientId: `backend_${Date.now()}_${Math.random()
         .toString(16)
@@ -119,18 +122,23 @@ class MQTTHandler {
     if (!data || typeof data !== "object") return;
 
     try {
-      // Normalize timestamp: fallback to current time if missing/invalid/too old
+      // Build messageId for idempotency (prefer device timestamp if provided)
+      const rawTs = Number(data.messageId ?? data.timestamp);
+      const messageId = Number.isFinite(rawTs) ? rawTs : Date.now();
+
+      // Normalize timestamp for display/storage
       let timestamp = new Date();
-      if (data.timestamp !== undefined && data.timestamp !== null) {
-        const candidate = new Date(data.timestamp);
-        const year2000 = new Date("2000-01-01T00:00:00Z");
-        if (!Number.isNaN(candidate.getTime()) && candidate > year2000) {
-          timestamp = candidate;
+      if (Number.isFinite(rawTs)) {
+        if (rawTs > 1e12) {
+          timestamp = new Date(rawTs); // epoch ms
+        } else if (rawTs > 1e9) {
+          timestamp = new Date(rawTs * 1000); // epoch s
         }
       }
 
-      const sensor = new SensorData({
+      const doc = {
         deviceId: data.deviceId || "unknown",
+        messageId,
         temperature: data.temperature ?? null,
         humidity: data.humidity ?? null,
         // accept gasLevel or gasVoltage (fallback)
@@ -138,33 +146,132 @@ class MQTTHandler {
           data.gasLevel !== undefined
             ? data.gasLevel
             : data.gasVoltage !== undefined
-            ? data.gasVoltage
-            : null,
+              ? data.gasVoltage
+              : null,
         ldrValue: data.ldrValue ?? null,
         lightLed: data.lightLed || null,
         fireDetected: Boolean(data.fireDetected),
         location: data.location || "Unknown",
         timestamp,
+      };
+
+      // Dedup: drop if last saved (in DB or memory) within min gap to handle multi-instance
+      const tsMs =
+        doc.timestamp instanceof Date
+          ? doc.timestamp.getTime()
+          : new Date(doc.timestamp).getTime();
+
+      // Bucket để ép một bản ghi mỗi khoảng minSensorIntervalMs
+      const bucketId = Number.isFinite(tsMs)
+        ? Math.floor(tsMs / this.minSensorIntervalMs)
+        : Math.floor(Date.now() / this.minSensorIntervalMs);
+      doc.bucketId = bucketId;
+
+      // STRONGEST CHECK: Check if messageId already exists (chặn duplicate message)
+      const existingByMessageId = await SensorData.findOne({
+        deviceId: doc.deviceId,
+        messageId: doc.messageId,
+      })
+        .select("_id createdAt")
+        .lean();
+
+      if (existingByMessageId) {
+        const existingTime = new Date(existingByMessageId.createdAt).toISOString();
+        console.log(
+          `⚠️ SKIP SAVE (Duplicate messageId): device=${doc.deviceId}, messageId=${doc.messageId}, already exists since ${existingTime}`
+        );
+        return;
+      }
+
+      // Check last persisted by createdAt (chặn MQTT retry trong vòng 60 giây)
+      const lastPersist = await SensorData.findOne({ deviceId: doc.deviceId })
+        .sort({ createdAt: -1 })
+        .select("timestamp messageId createdAt temperature humidity gasLevel")
+        .lean();
+
+      if (lastPersist) {
+        const lastCreatedDb = new Date(lastPersist.createdAt).getTime();
+        const timeSinceLastCreated = Date.now() - lastCreatedDb;
+
+        // Nếu có bản ghi được tạo trong vòng 60 giây, kiểm tra xem có phải duplicate không
+        if (timeSinceLastCreated < 60000) { // 60 giây = 1 phút
+          // Kiểm tra xem dữ liệu có giống hệt không (chặn duplicate data)
+          const isSameData =
+            lastPersist.temperature === doc.temperature &&
+            lastPersist.humidity === doc.humidity &&
+            lastPersist.gasLevel === doc.gasLevel;
+
+          if (isSameData) {
+            console.log(
+              `⚠️ SKIP SAVE (Duplicate data within 60s): device=${doc.deviceId}, messageId=${doc.messageId}, same data created ${Math.round(timeSinceLastCreated / 1000)}s ago`
+            );
+            return;
+          }
+        }
+
+        // Check timestamp gap (backup check)
+        const lastTsDb = lastPersist.timestamp
+          ? new Date(lastPersist.timestamp).getTime()
+          : undefined;
+        const tooSoonDb =
+          Number.isFinite(tsMs) &&
+          Number.isFinite(lastTsDb) &&
+          tsMs - lastTsDb < this.minSensorIntervalMs;
+
+        if (tooSoonDb) {
+          const delta = tsMs - lastTsDb;
+          console.log(
+            `⚠️ SKIP SAVE (Timestamp too soon): device=${doc.deviceId}, messageId=${doc.messageId}, ${delta}ms after previous (min gap ${this.minSensorIntervalMs}ms)`
+          );
+          return;
+        }
+      }
+
+      // Check last in-memory (fast check)
+      const lastTsMem = this.lastSensorSaved.get(doc.deviceId);
+      const tooSoonMem =
+        Number.isFinite(tsMs) &&
+        lastTsMem &&
+        tsMs - lastTsMem < this.minSensorIntervalMs;
+
+      if (tooSoonMem) {
+        const delta = tsMs - lastTsMem;
+        console.log(
+          `⚠️ SKIP SAVE (Memory check): device=${doc.deviceId}, messageId=${doc.messageId}, ${delta}ms after previous (min gap ${this.minSensorIntervalMs}ms)`
+        );
+        return;
+      }
+
+      // Use messageId as primary key (strongest deduplication)
+      const saved = await SensorData.findOneAndUpdate(
+        { deviceId: doc.deviceId, messageId: doc.messageId },
+        { $set: doc },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+      this.lastSensorSaved.set(doc.deviceId, tsMs);
+      console.log("✅ Sensor data saved", {
+        deviceId: saved.deviceId,
+        messageId: saved.messageId,
+        timestamp: saved.timestamp,
+        createdAt: saved.createdAt,
+        _id: saved._id,
       });
 
-      await sensor.save();
-      console.log("Sensor data saved");
-
-      if (sensor.fireDetected) {
+      if (saved.fireDetected) {
         const now = Date.now();
-        const lastAlert = this.fireAlertCooldowns.get(sensor.deviceId);
+        const lastAlert = this.fireAlertCooldowns.get(saved.deviceId);
         //const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
         const COOLDOWN_MS = 30 * 1000;
 
         if (!lastAlert || now - lastAlert > COOLDOWN_MS) {
           console.log(
-            `🔥 FIRE DETECTED on ${sensor.deviceId}. Sending alerts...`
+            `🔥 FIRE DETECTED on ${saved.deviceId}. Sending alerts...`
           );
-          this.sendGlobalFireAlert(sensor);
-          this.fireAlertCooldowns.set(sensor.deviceId, now);
+          this.sendGlobalFireAlert(saved);
+          this.fireAlertCooldowns.set(saved.deviceId, now);
         } else {
           console.log(
-            `🔥 Fire on ${sensor.deviceId} - In cooldown (${Math.round(
+            `🔥 Fire on ${saved.deviceId} - In cooldown (${Math.round(
               (COOLDOWN_MS - (now - lastAlert)) / 1000
             )}s remaining)`
           );
