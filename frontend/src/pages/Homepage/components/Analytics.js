@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  ScatterChart,
+  ComposedChart,
   Scatter,
   XAxis,
   YAxis,
@@ -9,17 +9,22 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  Line,
   ResponsiveContainer,
 } from "recharts";
 import "./Analytics.css";
 
 const Analytics = ({ authToken }) => {
   const [tempHumidityData, setTempHumidityData] = useState([]);
+  const [regressionLine, setRegressionLine] = useState([]);
+  const [outliers, setOutliers] = useState([]);
+  const [regressionStats, setRegressionStats] = useState(null);
   const [predictedTemp, setPredictedTemp] = useState([]);
   const [predictedHumidity, setPredictedHumidity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [domainConfig, setDomainConfig] = useState({ x: [0, 100], y: [0, 50] });
+  const [totalDataPoints, setTotalDataPoints] = useState(0); // Tổng số điểm dữ liệu gốc
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -43,6 +48,8 @@ const Analytics = ({ authToken }) => {
 
       if (tempHumidResponse.data.success) {
         const dataPoints = tempHumidResponse.data.dataPoints || [];
+        const totalRawPoints = dataPoints.length; // Lưu tổng số điểm gốc
+        setTotalDataPoints(totalRawPoints); // Lưu vào state
         const filteredData = dataPoints
           .filter(
             (d) =>
@@ -77,8 +84,116 @@ const Analytics = ({ authToken }) => {
             size: Math.min(400, 80 + Math.sqrt(count) * 60), // size based on frequency
             count: count,
             label: `xuất hiện ${count}x`,
+            isOutlier: false, // will be calculated after regression
           };
         });
+
+        // ==================== TÍNH TOÁN HỒISTÍ HỒI QUY ====================
+        // X = humidity (độ ẩm), Y = temperature (nhiệt độ)
+        if (formattedData.length >= 2) {
+          const n = formattedData.length;
+          let sumX = 0,
+            sumY = 0,
+            sumXY = 0,
+            sumX2 = 0;
+
+          formattedData.forEach((d) => {
+            sumX += d.humidity;
+            sumY += d.temperature;
+            sumXY += d.humidity * d.temperature;
+            sumX2 += d.humidity * d.humidity;
+          });
+
+          const denominator = n * sumX2 - sumX * sumX;
+          let slope = 0,
+            intercept = 0;
+
+          if (denominator !== 0) {
+            slope = (n * sumXY - sumX * sumY) / denominator;
+            intercept = (sumY - slope * sumX) / n;
+          } else {
+            intercept = sumY / n; // không có biến thiên
+          }
+
+          // Tính residual để xác định outlier
+          const residuals = formattedData.map((d) => {
+            const predicted = slope * d.humidity + intercept;
+            const residual = d.temperature - predicted;
+            return residual;
+          });
+
+          const meanResidual = residuals.reduce((a, b) => a + b, 0) / n;
+          const stdResidual = Math.sqrt(
+            residuals.reduce(
+              (sum, r) => sum + Math.pow(r - meanResidual, 2),
+              0
+            ) / n
+          );
+
+          // Outlier: |residual| > 2*stdResidual
+          const threshold = 2 * stdResidual;
+          const outlierPoints = [];
+
+          formattedData.forEach((d, i) => {
+            const residual = residuals[i];
+            if (Math.abs(residual) > threshold) {
+              d.isOutlier = true;
+              outlierPoints.push({
+                humidity: d.humidity,
+                temperature: d.temperature,
+                residual: residual.toFixed(2),
+                deviation: (Math.abs(residual) / stdResidual).toFixed(1) + "σ",
+                count: d.count,
+              });
+            }
+          });
+
+          // Tạo đường hồi quy để vẽ - tạo nhiều điểm để vẽ đường mượt
+          const minHumid = Math.min(...formattedData.map((d) => d.humidity));
+          const maxHumid = Math.max(...formattedData.map((d) => d.humidity));
+          // Tạo 50 điểm để vẽ đường mượt
+          const regressionPoints = [];
+          for (let i = 0; i <= 50; i++) {
+            const h = minHumid + (maxHumid - minHumid) * (i / 50);
+            const t = slope * h + intercept;
+            regressionPoints.push({ humidity: h, temperature: t });
+          }
+
+          // Tính R²
+          const yMean = sumY / n;
+          const ssTotal = formattedData.reduce(
+            (sum, d) => sum + Math.pow(d.temperature - yMean, 2),
+            0
+          );
+          const ssRes = residuals.reduce((sum, r) => sum + Math.pow(r, 2), 0);
+          const r2 = 1 - ssRes / ssTotal;
+
+          console.log("Regression stats:", {
+            slope,
+            intercept,
+            r2,
+            stdResidual,
+            outlierCount: outlierPoints.length,
+          });
+
+          setRegressionLine(regressionPoints);
+          setOutliers(outlierPoints);
+
+          // Tính tổng số điểm bất thường từ tổng số điểm gốc
+          // Mỗi outlier point có thể đại diện cho nhiều điểm gốc (dựa trên count)
+          const totalOutlierCount = outlierPoints.reduce(
+            (sum, o) => sum + o.count,
+            0
+          );
+
+          setRegressionStats({
+            slope: slope.toFixed(3),
+            intercept: intercept.toFixed(2),
+            r2: r2.toFixed(3),
+            stdResidual: stdResidual.toFixed(2),
+            outlierCount: totalOutlierCount, // Số điểm bất thường từ tổng điểm gốc
+          });
+        }
 
         console.log("Formatted scatter data:", formattedData);
         console.log("Data count:", formattedData.length);
@@ -192,7 +307,7 @@ const Analytics = ({ authToken }) => {
                   style={{ width: "100%", height: "500px", minHeight: "500px" }}
                 >
                   <ResponsiveContainer width="100%" height="100%">
-                    <ScatterChart
+                    <ComposedChart
                       margin={{ top: 20, right: 20, left: 20, bottom: 40 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
@@ -251,18 +366,114 @@ const Analytics = ({ authToken }) => {
                         }}
                       />
                       <Legend wrapperStyle={{ paddingTop: "20px" }} />
+                      {/* Điểm bình thường */}
                       <Scatter
-                        name="Điểm đo"
-                        data={tempHumidityData}
-                        fill="#ff7a00"
+                        name="Điểm bình thường"
+                        data={tempHumidityData.filter((d) => !d.isOutlier)}
+                        fill="#4CAF50"
                         shape="circle"
                         line={false}
                       />
-                    </ScatterChart>
+                      {/* Điểm bất thường */}
+                      {tempHumidityData.some((d) => d.isOutlier) && (
+                        <Scatter
+                          name="Điểm bất thường (Outlier)"
+                          data={tempHumidityData.filter((d) => d.isOutlier)}
+                          fill="#FF5252"
+                          shape="diamond"
+                          line={false}
+                        />
+                      )}
+                      {/* Đường hồi quy - sử dụng Line component */}
+                      {regressionLine.length > 1 && (
+                        <Line
+                          type="linear"
+                          dataKey="temperature"
+                          data={regressionLine}
+                          stroke="#2196F3"
+                          strokeWidth={3}
+                          dot={false}
+                          activeDot={false}
+                          isAnimationActive={false}
+                          name="Đường hồi quy"
+                          connectNulls={true}
+                        />
+                      )}
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </div>
+            {/* Thông tin thống kê hồi quy */}
+            {regressionStats && (
+              <div className="regression-stats">
+                <div className="stats-title">
+                  📊 Phân tích Hồi quy tuyến tính:
+                </div>
+                <div className="stats-grid">
+                  <div className="stat-item">
+                    <span className="stat-label">Phương trình:</span>
+                    <span className="stat-value">
+                      T = {regressionStats.slope} × H +{" "}
+                      {regressionStats.intercept}
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">R² (Độ phù hợp):</span>
+                    <span
+                      className="stat-value"
+                      style={{
+                        color: regressionStats.r2 > 0.7 ? "#4CAF50" : "#FF9800",
+                      }}
+                    >
+                      {regressionStats.r2}
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">
+                      Độ lệch chuẩn (residual):
+                    </span>
+                    <span className="stat-value">
+                      ±{regressionStats.stdResidual}°C
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-label">Số điểm bất thường:</span>
+                    <span
+                      className="stat-value"
+                      style={{
+                        color:
+                          regressionStats.outlierCount > 0
+                            ? "#FF5252"
+                            : "#4CAF50",
+                      }}
+                    >
+                      {regressionStats.outlierCount}/{totalDataPoints}
+                    </span>
+                  </div>
+                </div>
+                {outliers.length > 0 && (
+                  <div className="outliers-list">
+                    <div className="outliers-title">
+                      ⚠️ Các điểm bất thường phát hiện:
+                    </div>
+                    <div className="outliers-items">
+                      {outliers.map((o, i) => (
+                        <div key={i} className="outlier-item">
+                          <span>
+                            T={o.temperature}°C, H={o.humidity}% (xuất hiện{" "}
+                            {o.count}x)
+                          </span>
+                          <span className="outlier-detail">
+                            Sai lệch: {o.deviation}, residual={o.residual}°C
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
