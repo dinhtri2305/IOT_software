@@ -43,7 +43,7 @@ const Analytics = ({ authToken }) => {
 
       if (tempHumidResponse.data.success) {
         const dataPoints = tempHumidResponse.data.dataPoints || [];
-        const formattedData = dataPoints
+        const filteredData = dataPoints
           .filter(
             (d) =>
               d.humidity != null &&
@@ -53,23 +53,32 @@ const Analytics = ({ authToken }) => {
               d.humidity >= 0 &&
               d.temperature >= 0
           )
-          .map((d, idx) => ({
-            id: idx + 1,
+          .map((d) => ({
             humidity: Number(Math.round(d.humidity * 10) / 10),
             temperature: Number(Math.round(d.temperature * 10) / 10),
-            size: Math.max(
-              60,
-              Math.min(400, (d.temperature || 0) + (d.humidity || 0))
-            ),
-            label:
-              d.timestamp &&
-              new Date(d.timestamp).toLocaleString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-                day: "2-digit",
-                month: "2-digit",
-              }),
+            timestamp: d.timestamp,
           }));
+
+        // Count frequency of each (temperature, humidity) pair
+        const frequencyMap = {};
+        filteredData.forEach((d) => {
+          const key = `${d.temperature},${d.humidity}`;
+          frequencyMap[key] = (frequencyMap[key] || 0) + 1;
+        });
+
+        // Map to unique points with size based on frequency
+        const formattedData = Object.keys(frequencyMap).map((key, idx) => {
+          const [temp, hum] = key.split(",").map(Number);
+          const count = frequencyMap[key];
+          return {
+            id: idx + 1,
+            humidity: hum,
+            temperature: temp,
+            size: Math.min(400, 80 + Math.sqrt(count) * 60), // size based on frequency
+            count: count,
+            label: `xuất hiện ${count}x`,
+          };
+        });
 
         console.log("Formatted scatter data:", formattedData);
         console.log("Data count:", formattedData.length);
