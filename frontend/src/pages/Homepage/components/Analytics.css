@@ -31,7 +31,6 @@
 .analytics-layout {
   display: flex;
   flex-direction: row;
-  gap: 24px;
   height: 100%;
   overflow: hidden;
   align-items: center;
@@ -78,6 +77,7 @@
   line-height: 1.5;
   text-align: center;
   padding: 0;
+  margin-top: 10px;
 }
 
 .analytics-empty {
@@ -92,8 +92,8 @@
 
 /* Temperature vs Humidity Chart (B1) */
 .temp-humidity-chart {
-  min-height: 500px;
-  height: 500px;
+  min-height: 480px;
+  height: 480px;
   position: relative;
 }
 
@@ -243,7 +243,7 @@
 /* Regression Stats Section */
 .regression-stats {
   background: #f5f5f5;
-  border: 1px solid #ddd;
+  border: 2px solid #333;
   border-radius: 8px;
   padding: 16px;
   margin-top: 16px;
@@ -251,19 +251,18 @@
 }
 
 .stats-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #333;
   margin-bottom: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .stat-item {
@@ -277,14 +276,14 @@
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 13px;
   color: #888;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
 .stat-value {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #2196F3;
   word-break: break-word;

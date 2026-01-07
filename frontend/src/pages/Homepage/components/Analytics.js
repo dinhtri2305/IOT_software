@@ -304,7 +304,7 @@ const Analytics = ({ authToken }) => {
                 <div className="analytics-empty">Chưa có dữ liệu</div>
               ) : (
                 <div
-                  style={{ width: "100%", height: "500px", minHeight: "500px" }}
+                  style={{ width: "100%", height: "480px", minHeight: "480px" }}
                 >
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
@@ -408,18 +408,18 @@ const Analytics = ({ authToken }) => {
             {regressionStats && (
               <div className="regression-stats">
                 <div className="stats-title">
-                  📊 Phân tích Hồi quy tuyến tính:
+                  📊 Phân tích Hồi quy tuyến tính
                 </div>
                 <div className="stats-grid">
                   <div className="stat-item">
-                    <span className="stat-label">Phương trình:</span>
+                    <span className="stat-label">Phương trình</span>
                     <span className="stat-value">
                       T = {regressionStats.slope} × H +{" "}
                       {regressionStats.intercept}
                     </span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-label">R² (Độ phù hợp):</span>
+                    <span className="stat-label">R² (Độ phù hợp)</span>
                     <span
                       className="stat-value"
                       style={{
@@ -431,14 +431,14 @@ const Analytics = ({ authToken }) => {
                   </div>
                   <div className="stat-item">
                     <span className="stat-label">
-                      Độ lệch chuẩn (residual):
+                      Độ lệch chuẩn Residual
                     </span>
                     <span className="stat-value">
                       ±{regressionStats.stdResidual}°C
                     </span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-label">Số điểm bất thường:</span>
+                    <span className="stat-label">Số điểm bất thường</span>
                     <span
                       className="stat-value"
                       style={{
