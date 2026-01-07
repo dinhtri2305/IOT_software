@@ -1,6 +1,12 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   font-family: "Inter", sans-serif;
 }
 
@@ -108,6 +114,8 @@
   display: flex;
   flex-direction: column;
   background: #c8daf6;
+  /* allow children to shrink so .content can scroll (fixes flex overflow) */
+  min-height: 0;
 }
 
 /* Top bar */
@@ -235,6 +243,9 @@
 .content {
   flex: 1;
   padding: 24px;
+  /* allow the content area to scroll independently so topbar and sidebar stay fixed */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .content-placeholder {

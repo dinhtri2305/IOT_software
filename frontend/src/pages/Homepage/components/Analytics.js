@@ -455,7 +455,7 @@ const Analytics = ({ authToken }) => {
                 {outliers.length > 0 && (
                   <div className="outliers-list">
                     <div className="outliers-title">
-                      ⚠️ Các điểm bất thường phát hiện:
+                      ⚠️ Các điểm bất thường phát hiện
                     </div>
                     <div className="outliers-items">
                       {outliers.map((o, i) => (
