@@ -6,8 +6,6 @@ const Device = require("../models/device.model");
 const SensorData = require("../models/sensor.model");
 const ChatHistory = require("../models/chatHistory.model");
 
-// Bạn có thể đổi sang model khác nếu muốn
-// Model này sử dụng miễn phí
 const DEFAULT_MODEL = "openai/gpt-oss-120b";
 
 // Khởi tạo Groq client một lần, dùng chung cho tất cả request

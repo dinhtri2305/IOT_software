@@ -17,14 +17,12 @@
 #define LED_ALERT_PIN 25
 #define LED_LIGHT_PIN 33 // LED chiếu sáng tự động
 
-// MQ2 CHIA ÁP
-#define Rt 33000.0
-#define Rb 47000.0
+// MQ2 - ĐỌC TRỰC TIẾP TỪ MODULE
 #define VREF 3.3
 
 // NGƯỠNG
-#define FIRE_SMOKE_VOUT 3.4
-#define FIRE_TEMP 60.0
+#define FIRE_SMOKE_VOUT 2.5     // Điện áp ngưỡng khói (V) - điều chỉnh theo module của bạn
+#define FIRE_TEMP 60.0          // Nhiệt độ ngưỡng cháy (°C)
 #define LDR_DARK_THRESHOLD 2000 // < là tối
 
 // WIFI & MQTT
@@ -56,9 +54,15 @@ bool manualOverride = false; // Cho phép điều khiển thủ công ngay cả 
 unsigned long lastStatusSend = 0;
 const unsigned long STATUS_INTERVAL = 10000; // Gửi trạng thái mỗi 10 giây
 unsigned long lastSensorSend = 0;
-const unsigned long SENSOR_INTERVAL = 60000; // Gửi dữ liệu cảm biến mỗi 60 giây
-bool sensorReady = false;                // Chỉ gửi khi cảm biến đã sẵn sàng
+const unsigned long SENSOR_INTERVAL = 60000;  // Gửi dữ liệu cảm biến mỗi 60 giây
+bool sensorReady = false;                     // Chỉ gửi khi cảm biến đã sẵn sàng
 const unsigned long SENSOR_WARMUP_MS = 15000; // Thời gian đợi cảm biến ổn định
+
+// BỘ ĐỆM XÁC NHẬN CHÁY - CHỐNG NHIỄU
+const unsigned long FIRE_CONFIRM_TIME = 10000; // Cần duy trì điều kiện cháy 10 giây
+unsigned long fireConditionStart = 0;          // Thời điểm bắt đầu phát hiện điều kiện cháy
+bool fireConditionMet = false;                 // Điều kiện cháy đang được thỏa mãn
+bool fireConfirmed = false;                    // Cháy đã được xác nhận sau 10s
 
 // MQTT CALLBACK
 void callback(char *topic, byte *payload, unsigned int length)
@@ -92,6 +96,8 @@ void callback(char *topic, byte *payload, unsigned int length)
   {
     emergencyMode = false;  // Tắt chế độ khẩn cấp
     manualOverride = false; // Reset manual override
+    fireConfirmed = false;  // Reset trạng thái cháy
+    fireConditionMet = false;
     relayState = false;
     buzzerState = false;
     alertLedState = false;
@@ -329,28 +335,72 @@ void loop()
   if (isnan(humidity))
     humidity = 0;
 
+  // ĐỌC MQ2 - CÔNG THỨC ĐÚNG (đọc trực tiếp từ module)
   int gasADC = analogRead(MQ2_PIN);
-  float gasV = gasADC * (VREF / 4095.0) * ((Rt + Rb) / Rb);
+  float gasV = gasADC * (VREF / 4095.0); // Chuyển ADC sang điện áp
 
   int ldrValue = analogRead(LDR_PIN);
   bool isDark = ldrValue < LDR_DARK_THRESHOLD;
 
+  // KIỂM TRA ĐIỀU KIỆN CHÁY
   bool fireByTemp = temperature > FIRE_TEMP;
   bool fireByGas = gasV > FIRE_SMOKE_VOUT;
-  bool fireDetected = fireByTemp || fireByGas;
+  bool currentFireCondition = fireByTemp || fireByGas;
+
+  // XỬ LÝ BỘ ĐỆM XÁC NHẬN CHÁY (10 GIÂY)
+  if (currentFireCondition)
+  {
+    if (!fireConditionMet)
+    {
+      // Mới bắt đầu phát hiện điều kiện cháy
+      fireConditionMet = true;
+      fireConditionStart = millis();
+      Serial.println("⚠️ Fire condition detected - Starting 10s confirmation timer");
+    }
+    else
+    {
+      // Đang trong quá trình xác nhận
+      unsigned long elapsed = millis() - fireConditionStart;
+
+      if (!fireConfirmed && elapsed >= FIRE_CONFIRM_TIME)
+      {
+        // Đã đủ 10 giây → XÁC NHẬN CHÁY
+        fireConfirmed = true;
+        Serial.println("🔥 FIRE CONFIRMED after 10 seconds!");
+      }
+      else if (!fireConfirmed)
+      {
+        // Đang đếm thời gian
+        Serial.print("⏳ Confirming fire... ");
+        Serial.print(elapsed / 1000);
+        Serial.println("s / 10s");
+      }
+    }
+  }
+  else
+  {
+    // Điều kiện cháy KHÔNG còn thỏa mãn
+    if (fireConditionMet)
+    {
+      Serial.println("✅ Fire condition cleared before confirmation");
+      fireConditionMet = false;
+      fireConfirmed = false;
+      fireConditionStart = 0;
+    }
+  }
 
   // ĐÈN CHIẾU SÁNG AUTO
   digitalWrite(LED_LIGHT_PIN, isDark ? HIGH : LOW);
 
-  // XỬ LÝ CHÁY
-  if (fireDetected)
+  // XỬ LÝ CHÁY (CHỈ KHI ĐÃ XÁC NHẬN)
+  if (fireConfirmed)
   {
     if (!emergencyMode)
     {
       // Phát hiện cháy MỚI → reset manual override, quay về chế độ tự động
       emergencyMode = true;
       manualOverride = false;
-      Serial.println("FIRE DETECTED - EMERGENCY MODE ACTIVATED (Auto control)");
+      Serial.println("🚨 EMERGENCY MODE ACTIVATED - Auto control enabled");
     }
 
     // Nếu KHÔNG có manual override → tự động bật tất cả
@@ -373,11 +423,11 @@ void loop()
   }
   else
   {
-    // Hết cháy → tắt chế độ khẩn cấp
+    // Không còn cháy → tắt chế độ khẩn cấp
     if (emergencyMode)
     {
       emergencyMode = false;
-      Serial.println("Fire cleared - Emergency mode deactivated");
+      Serial.println("✅ Fire cleared - Emergency mode deactivated");
 
       // Nếu KHÔNG có manual override → tự động tắt hết
       if (!manualOverride)
@@ -416,7 +466,7 @@ void loop()
           humidity,
           gasV,
           ldrValue,
-          fireDetected);
+          fireConfirmed); // Gửi trạng thái cháy đã xác nhận
       lastSensorSend = millis();
     }
   }
@@ -430,7 +480,7 @@ void loop()
   // ================= LCD DISPLAY =================
   lcd.clear();
 
-  if (fireDetected)
+  if (fireConfirmed)
   {
     lcd.setCursor(0, 0);
 
@@ -459,6 +509,16 @@ void loop()
       lcd.print(gasV, 1);
       lcd.print("V");
     }
+  }
+  else if (fireConditionMet && !fireConfirmed)
+  {
+    // Hiển thị đang xác nhận cháy
+    lcd.setCursor(0, 0);
+    lcd.print("Xac nhan chay..");
+    lcd.setCursor(0, 1);
+    unsigned long elapsed = millis() - fireConditionStart;
+    lcd.print(elapsed / 1000);
+    lcd.print("s / 10s");
   }
   else
   {

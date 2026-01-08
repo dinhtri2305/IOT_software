@@ -45,7 +45,7 @@ class LinearRegression {
   }
 }
 
-// Get temperature vs humidity correlation (always uses latest {limit} records)
+// Lấy 30 điểm gần nhất
 exports.getTempHumidityCorrelation = async (req, res) => {
   try {
     // Always rely on limit; default to 30 if missing/invalid

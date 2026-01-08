@@ -18,7 +18,7 @@ const sendControlCommand = async (command, deviceId = "ESP32_001") => {
         isOnline: true,
       };
       
-      // ✅ Chỉ cập nhật các field có trong command
+      // Chỉ cập nhật các field có trong command
       if (command.relay !== undefined) {
         updates["relay.status"] = command.relay;
         updates["relay.lastChanged"] = new Date();
@@ -40,10 +40,10 @@ const sendControlCommand = async (command, deviceId = "ESP32_001") => {
       
       if (device) {
         await device.save();
-        console.log(`✅ Device ${deviceId} DB updated:`, updates);
+        console.log(`Device ${deviceId} DB updated:`, updates);
       }
     } catch (err) {
-      console.error("❌ Update device status error:", err.message);
+      console.error("Update device status error:", err.message);
       console.error("Stack:", err.stack);
     }
   }
